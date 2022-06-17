@@ -1,0 +1,25 @@
+{
+  "slug": "TestPlugin",
+  "name": "Test Plugin",
+  "version": "2.0.0",
+  "license": "proprietary",
+  "brand": "Phnq",
+  "author": "Patrick Gostovic",
+  "authorEmail": "pg@phranq.com",
+  "authorUrl": "http://phnq.org",
+  "pluginUrl": "http://phnq.org",
+  "manualUrl": "http://phnq.org",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "TestModule",
+      "name": "TestModule",
+      "description": "Simple sine oscillator",
+      "tags": [
+        "VCO"
+      ]
+    }
+  ]
+}
