@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rack.hpp>
-#include "../Module.hpp"
+#include "../Engine.hpp"
 #include <vector>
 #include <map>
 #include <string>
@@ -16,11 +16,11 @@ namespace phnq
     IOPort *port;
   };
 
-  template <class TEngine = phnq::Module>
+  template <class TEngine = phnq::Engine>
   struct RackModule : rack::engine::Module
   {
   private:
-    phnq::Module *engine;
+    phnq::Engine *engine;
     vector<PortMapping> portMappings;
 
   public:
@@ -66,15 +66,15 @@ namespace phnq
             it->port->setValue(inputs[it->id].getVoltage() / 5.f);
             break;
           case IOPortType::Param:
-            // The phnq::Module instance treats params and CV ins the same. Multiply the 0-1 param range by 10.
+            // The phnq::Engine instance treats params and CV ins the same. Multiply the 0-1 param range by 10.
             it->port->setValue(params[it->id].getValue() * 10.f);
             break;
           case IOPortType::CV:
-            // phnq::Module uses the Eurorack convention, so nothing done here.
+            // phnq::Engine uses the Eurorack convention, so nothing done here.
             it->port->setValue(inputs[it->id].getVoltage());
             break;
           case IOPortType::Gate:
-            // phnq::Module uses the Eurorack convention, so nothing done here.
+            // phnq::Engine uses the Eurorack convention, so nothing done here.
             it->port->setValue(inputs[it->id].getVoltage());
             break;
           }
@@ -103,11 +103,11 @@ namespace phnq
             outputs[it->id].setVoltage(it->port->getValue() * 5.f);
             break;
           case IOPortType::CV:
-            // phnq::Module uses the Eurorack convention, so nothing done here.
+            // phnq::Engine uses the Eurorack convention, so nothing done here.
             outputs[it->id].setVoltage(it->port->getValue());
             break;
           case IOPortType::Gate:
-            // phnq::Module uses the Eurorack convention, so nothing done here.
+            // phnq::Engine uses the Eurorack convention, so nothing done here.
             outputs[it->id].setVoltage(it->port->getValue());
             break;
           case IOPortType::Param:

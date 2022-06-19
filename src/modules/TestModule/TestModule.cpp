@@ -1,5 +1,5 @@
 #include <cmath>
-#include "../../core/Module.hpp"
+#include "../../core/Engine.hpp"
 #include <daisysp.h>
 
 using namespace phnq;
@@ -7,7 +7,7 @@ using namespace daisysp;
 
 static const float FREQ_C4 = 261.6256f;
 
-struct TestModule : phnq::Module
+struct TestModule : phnq::Engine
 {
   IOPort *gateIn;
   IOPort *pitchParam;
@@ -62,5 +62,5 @@ rack::plugin::Model *modelTestModule = rack::createModel<phnq::RackModule<TestMo
 
 #ifdef PHNQ_SEED
 #include "../../core/seed/SeedModule.hpp"
-phnq::Module *moduleInstance = new TestModule();
+phnq::Engine *moduleInstance = new TestModule();
 #endif

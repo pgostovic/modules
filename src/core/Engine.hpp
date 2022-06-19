@@ -91,18 +91,18 @@ namespace phnq
     Output
   };
 
-  struct Module;
+  struct Engine;
 
   struct IOPort
   {
   private:
-    Module *module;
+    Engine *module;
     IOPortType type;
     IOPortDirection dir;
     float value;
 
   public:
-    IOPort(Module *module, IOPortType type, IOPortDirection dir)
+    IOPort(Engine *module, IOPortType type, IOPortDirection dir)
     {
       this->module = module;
       this->type = type;
@@ -149,7 +149,7 @@ namespace phnq
     }
   };
 
-  struct Module
+  struct Engine
   {
   private:
     IOConfig ioConfig = {0, 0, 0, 0, 0, 0, 0};
@@ -217,7 +217,7 @@ namespace phnq
     }
 
   public:
-    ~Module()
+    ~Engine()
     {
       for (vector<IOPort *>::iterator it = ioPorts.begin(); it != ioPorts.end();)
       {

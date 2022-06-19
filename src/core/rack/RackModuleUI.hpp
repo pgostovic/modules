@@ -2,7 +2,7 @@
 
 #include <rack.hpp>
 #include "RackModule.hpp"
-#include "../Module.hpp"
+#include "../Engine.hpp"
 
 using namespace rack;
 
@@ -10,7 +10,7 @@ extern Plugin *pluginInstance;
 
 namespace phnq
 {
-  template <class TEngine = phnq::Module>
+  template <class TEngine = phnq::Engine>
   struct RackModuleUI : rack::app::ModuleWidget
   {
     RackModuleUI(RackModule<TEngine> *module)

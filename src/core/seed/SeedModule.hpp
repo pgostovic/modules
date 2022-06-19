@@ -1,11 +1,11 @@
-#include "../Module.hpp"
+#include "../Engine.hpp"
 #include "daisysp.h"
 #include "daisy_seed.h"
 
 using namespace daisy;
 using namespace daisysp;
 
-extern phnq::Module *moduleInstance;
+extern phnq::Engine *moduleInstance;
 
 DaisySeed hw;
 
