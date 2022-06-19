@@ -10,127 +10,40 @@ using namespace std;
 
 namespace phnq
 {
-  struct ParamMapping
+  struct PortMapping
   {
     unsigned int id;
-    phnq::CVPort *port;
+    IOPort *port;
   };
 
-  struct AudioInputMapping
-  {
-    unsigned int id;
-    phnq::AudioPort *port;
-  };
-
-  struct AudioOutputMapping
-  {
-    unsigned int id;
-    phnq::AudioPort *port;
-  };
-
-  struct CVInputMapping
-  {
-    unsigned int id;
-    phnq::CVPort *port;
-  };
-
-  struct CVOutputMapping
-  {
-    unsigned int id;
-    phnq::CVPort *port;
-  };
-
-  struct GateInputMapping
-  {
-    unsigned int id;
-    phnq::GatePort *port;
-  };
-
-  struct GateOutputMapping
-  {
-    unsigned int id;
-    phnq::GatePort *port;
-  };
-
-  template <class TDelegate = phnq::Module>
+  template <class TEngine = phnq::Module>
   struct RackModule : rack::engine::Module
   {
   private:
-    phnq::Module *delegate;
-    vector<ParamMapping> paramMappings;
-    vector<AudioInputMapping> audioInputMappings;
-    vector<AudioOutputMapping> audioOutputMappings;
-    vector<CVInputMapping> cvInputMappings;
-    vector<CVOutputMapping> cvOutputMappings;
-    vector<GateInputMapping> gateInputMappings;
-    vector<GateOutputMapping> gateOutputMappings;
+    phnq::Module *engine;
+    vector<PortMapping> portMappings;
 
   public:
     RackModule()
     {
-      delegate = new TDelegate();
-
-      IOConfig ioConfig = delegate->getIOConfig();
-
-      uint8_t numParams = 0;
-      uint8_t numIns = ioConfig.numAudioIns + ioConfig.numCVIns + ioConfig.numGateIns;
-      uint8_t numOuts = ioConfig.numAudioOuts + ioConfig.numCVOuts + ioConfig.numGateOuts;
-
-      for (uint8_t i = 0; i < ioConfig.numCVIns; i++)
-      {
-        if (delegate->getCVIn(i)->isParam())
-        {
-          numParams++;
-          numIns--;
-        }
-      }
-
-      config(numParams, numIns, numOuts);
+      engine = new TEngine();
+      IOConfig ioConfig = engine->getIOConfig();
+      config(ioConfig.numParams, ioConfig.numAudioIns + ioConfig.numCVIns + ioConfig.numGateIns, ioConfig.numAudioOuts + ioConfig.numCVOuts + ioConfig.numGateOuts);
     }
 
     ~RackModule()
     {
-      delete delegate;
+      delete engine;
     }
 
-    TDelegate *getDelegate()
+    TEngine *getEngine()
     {
-      return (TDelegate *)this->delegate;
+      return (TEngine *)this->engine;
     }
 
-    void addParamMapping(unsigned int id, phnq::CVPort *port)
+    void addPortMapping(unsigned int id, IOPort *port)
     {
-      paramMappings.push_back({id, port});
-    }
-
-    void addAudioInputMapping(unsigned int id, phnq::AudioPort *port)
-    {
-      audioInputMappings.push_back({id, port});
-    }
-
-    void addAudioOutputMapping(unsigned int id, phnq::AudioPort *port)
-    {
-      audioOutputMappings.push_back({id, port});
-    }
-
-    void addCVInputMapping(unsigned int id, phnq::CVPort *port)
-    {
-      cvInputMappings.push_back({id, port});
-    }
-
-    void addCVOutputMapping(unsigned int id, phnq::CVPort *port)
-    {
-      cvOutputMappings.push_back({id, port});
-    }
-
-    void addGateInputMapping(unsigned int id, phnq::GatePort *port)
-    {
-      gateInputMappings.push_back({id, port});
-    }
-
-    void addGateOutputMapping(unsigned int id, phnq::GatePort *port)
-    {
-      gateOutputMappings.push_back({id, port});
+      portMappings.push_back({id, port});
     }
 
     void process(const ProcessArgs &args) override
@@ -142,54 +55,66 @@ namespace phnq
        * - CV input port values are set.
        * - Gate input port values are set.
        */
-      for (vector<AudioInputMapping>::iterator it = audioInputMappings.begin(); it != audioInputMappings.end(); it++)
+      for (vector<PortMapping>::iterator it = portMappings.begin(); it != portMappings.end(); it++)
       {
-        // scale from Eurorack convention 5 to nominal amplitude of 1.
-        it->port->setValue(inputs[it->id].getVoltage() / 5.f);
-      }
-
-      for (vector<ParamMapping>::iterator it = paramMappings.begin(); it != paramMappings.end(); it++)
-      {
-        // The phnq::Module instance treats params and CV ins the same. Multiply the 0-1 param range by 5.
-        it->port->setValue(params[it->id].getValue() * 5.f);
-      }
-
-      for (vector<CVInputMapping>::iterator it = cvInputMappings.begin(); it != cvInputMappings.end(); it++)
-      {
-        // phnq::Module uses the Eurorack convention of 5v amplitude, so nothing done here.
-        it->port->setValue(inputs[it->id].getVoltage());
-      }
-
-      for (vector<GateInputMapping>::iterator it = gateInputMappings.begin(); it != gateInputMappings.end(); it++)
-      {
-        it->port->setValue(inputs[it->id].getVoltage());
+        if (it->port->getDirection() == IOPortDirection::Input)
+        {
+          switch (it->port->getType())
+          {
+          case IOPortType::Audio:
+            // scale from Eurorack convention 5 to nominal amplitude of 1.
+            it->port->setValue(inputs[it->id].getVoltage() / 5.f);
+            break;
+          case IOPortType::Param:
+            // The phnq::Module instance treats params and CV ins the same. Multiply the 0-1 param range by 10.
+            it->port->setValue(params[it->id].getValue() * 10.f);
+            break;
+          case IOPortType::CV:
+            // phnq::Module uses the Eurorack convention, so nothing done here.
+            it->port->setValue(inputs[it->id].getVoltage());
+            break;
+          case IOPortType::Gate:
+            // phnq::Module uses the Eurorack convention, so nothing done here.
+            it->port->setValue(inputs[it->id].getVoltage());
+            break;
+          }
+        }
       }
 
       /**
        * DSP Processing is done here. The inputs set above are used and output values are set.
        */
-      delegate->doProcess({args.sampleRate, args.sampleTime});
+      engine->doProcess({args.sampleRate, args.sampleTime});
 
       /**
-       * Take the output values that were set in `delegate->doProcess()` and send them to the module host:
+       * Take the output values that were set in `engine->doProcess()` and send them to the module host:
        * - Audio
        * - CV
        * - Gate
        */
-      for (vector<AudioOutputMapping>::iterator it = audioOutputMappings.begin(); it != audioOutputMappings.end(); it++)
+      for (vector<PortMapping>::iterator it = portMappings.begin(); it != portMappings.end(); it++)
       {
-        outputs[it->id].setVoltage(it->port->getValue() * 5.f); // scale from nominal amplitude of 1 to Eurorack convention 5.
-      }
-
-      for (vector<CVOutputMapping>::iterator it = cvOutputMappings.begin(); it != cvOutputMappings.end(); it++)
-      {
-        // phnq::Module uses the Eurorack convention of 5v amplitude, so nothing done here.
-        outputs[it->id].setVoltage(it->port->getValue());
-      }
-
-      for (vector<GateOutputMapping>::iterator it = gateOutputMappings.begin(); it != gateOutputMappings.end(); it++)
-      {
-        outputs[it->id].setVoltage(it->port->getValue() ? 10.f : 0.f);
+        if (it->port->getDirection() == IOPortDirection::Output)
+        {
+          switch (it->port->getType())
+          {
+          case IOPortType::Audio:
+            // scale from nominal amplitude of 1 to Eurorack convention 5.
+            outputs[it->id].setVoltage(it->port->getValue() * 5.f);
+            break;
+          case IOPortType::CV:
+            // phnq::Module uses the Eurorack convention, so nothing done here.
+            outputs[it->id].setVoltage(it->port->getValue());
+            break;
+          case IOPortType::Gate:
+            // phnq::Module uses the Eurorack convention, so nothing done here.
+            outputs[it->id].setVoltage(it->port->getValue());
+            break;
+          case IOPortType::Param:
+            // N/A
+            break;
+          }
+        }
       }
     }
   };

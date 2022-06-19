@@ -63,119 +63,88 @@ namespace phnq
    */
   struct IOConfig
   {
-    uint8_t numAudioIns;  // max 2
-    uint8_t numAudioOuts; // max 2
-    uint8_t numCVIns;     // max 10
-    uint8_t numCVOuts;    // max 2
-    uint8_t numGateIns;   // max 18 for ins + outs
-    uint8_t numGateOuts;  // max 18 for ins + outs
+    size_t numAudioIns;  // max 2
+    size_t numAudioOuts; // max 2
+    size_t numParams;    // max 10 for params + CV ins
+    size_t numCVIns;     // max 10 for params + CV ins
+    size_t numCVOuts;    // max 2
+    size_t numGateIns;   // max 18 for ins + outs
+    size_t numGateOuts;  // max 18 for ins + outs
   };
 
-  /**
-   * Nominal amplitude is 1, clamped at 2.
-   */
-  struct AudioPort
+  const float GATE_LOW = 0.f;
+  const float GATE_HIGH = 10.f;
+  const float GATE_LOW_THRESH = 0.1f;
+  const float GATE_HIGH_THRESH = 2.f;
+
+  enum IOPortType
+  {
+    Audio, // nominal range of [-1, 1], clamped at [-2, 2] when setting output value
+    CV,    // nominal range of [0, 10]
+    Gate,  // low is 0.f, hight is 10.f
+    Param, // same as CV
+  };
+
+  enum IOPortDirection
+  {
+    Input,
+    Output
+  };
+
+  struct Module;
+
+  struct IOPort
   {
   private:
-    bool isInput;
+    Module *module;
+    IOPortType type;
+    IOPortDirection dir;
     float value;
 
   public:
-    AudioPort(bool isInput)
+    IOPort(Module *module, IOPortType type, IOPortDirection dir)
     {
-      this->isInput = isInput;
+      this->module = module;
+      this->type = type;
+      this->dir = dir;
+    }
+
+    IOPortType getType()
+    {
+      return type;
+    }
+
+    IOPortDirection getDirection()
+    {
+      return dir;
     }
 
     float getValue()
     {
-      return this->value;
+      return value;
     }
 
     void setValue(float value)
     {
-      this->value = isInput ? value : clamp(value, -2.f, 2.f);
-    }
-  };
-
-  struct CVPort
-  {
-  private:
-    bool isInput;
-    float value;
-    bool _isParam = false;
-
-  public:
-    CVPort(bool isInput)
-    {
-      this->isInput = isInput;
-    }
-
-    float getValue()
-    {
-      return this->value;
-    }
-
-    void setValue(float value)
-    {
-      this->value = isInput ? value : clamp(value, -10.f, 10.f);
-    }
-
-    CVPort *asParam()
-    {
-      this->_isParam = true;
-      return this;
-    }
-
-    bool isParam()
-    {
-      return this->_isParam;
-    }
-  };
-
-  struct GatePort
-  {
-  private:
-    bool isInput;
-    bool value;
-    float voltage;
-
-  public:
-    GatePort(bool isInput)
-    {
-      this->isInput = isInput;
-      this->voltage = 0;
-    }
-
-    bool getValue()
-    {
-      return this->value;
-    }
-
-    void setValue(bool value)
-    {
-      this->value = value;
-    }
-
-    /**
-     * This method prevents rapid toggling of state by specifying divergent
-     * low and high thresholds for value flipping. A true gate value will only
-     * flip to false if the incoming voltage dips below `lowThresh`. To flip
-     * back to true, the voltage has to exceed `highThresh`. This prevents an
-     * erratic signal from rapidly toggling the state.
-     *
-     * @param voltage incoming CV signal.
-     * @param lowThresh threshold below which the state is toggled to false.
-     * @param highThresh threshold above which the state is toggled to true.
-     */
-    void setValue(float voltage, float lowThresh = 0.1f, float highThresh = 2.f)
-    {
-      if (this->value && voltage < lowThresh)
+      switch (type)
       {
-        setValue(false);
-      }
-      else if (!this->value && voltage > highThresh)
-      {
-        setValue(true);
+      case IOPortType::Audio:
+        this->value = dir == IOPortDirection::Input ? value : clamp(value, -2.f, 2.f);
+        break;
+      case IOPortType::Param:
+      case IOPortType::CV:
+        this->value = dir == IOPortDirection::Input ? value : clamp(value, 0.f, 10.f);
+        break;
+      case IOPortType::Gate:
+        if (this->value == GATE_HIGH && value < GATE_LOW_THRESH)
+        {
+          setValue(GATE_LOW);
+        }
+        else if (this->value == GATE_LOW && value > GATE_HIGH_THRESH)
+        {
+          setValue(GATE_HIGH);
+        }
+        break;
       }
     }
   };
@@ -183,44 +152,60 @@ namespace phnq
   struct Module
   {
   private:
-    IOConfig config;
+    IOConfig ioConfig = {0, 0, 0, 0, 0, 0, 0};
     FrameInfo frameInfo;
-    vector<AudioPort *> audioIns;
-    vector<AudioPort *> audioOuts;
-    vector<CVPort *> cvIns;
-    vector<CVPort *> cvOuts;
-    vector<GatePort *> gateIns;
-    vector<GatePort *> gateOuts;
+    vector<IOPort *> ioPorts;
 
   protected:
-    Module(IOConfig config)
+    IOPort *addIOPort(IOPortType type, IOPortDirection dir)
     {
-      this->config = config; // Need to validate this config.
-
-      for (uint8_t i = 0; i < config.numAudioIns; i++)
+      IOPort *port = new IOPort(this, type, dir);
+      ioPorts.push_back(port);
+      if (type == IOPortType::Audio)
       {
-        audioIns.push_back(new AudioPort(true));
+        if (dir == IOPortDirection::Input)
+        {
+          ioConfig.numAudioIns++;
+        }
+        else
+        {
+          ioConfig.numAudioOuts++;
+        }
       }
-      for (uint8_t i = 0; i < config.numAudioOuts; i++)
+      else if (type == IOPortType::CV)
       {
-        audioOuts.push_back(new AudioPort(false));
+        if (dir == IOPortDirection::Input)
+        {
+          ioConfig.numCVIns++;
+        }
+        else
+        {
+          ioConfig.numCVOuts++;
+        }
       }
-      for (uint8_t i = 0; i < config.numCVIns; i++)
+      else if (type == IOPortType::Gate)
       {
-        cvIns.push_back(new CVPort(true));
+        if (dir == IOPortDirection::Input)
+        {
+          ioConfig.numGateIns++;
+        }
+        else
+        {
+          ioConfig.numGateOuts++;
+        }
       }
-      for (uint8_t i = 0; i < config.numCVOuts; i++)
+      else if (type == IOPortType::Param)
       {
-        cvOuts.push_back(new CVPort(false));
+        if (dir == IOPortDirection::Input)
+        {
+          ioConfig.numParams++;
+        }
+        else
+        {
+          // Not a thing...
+        }
       }
-      for (uint8_t i = 0; i < config.numGateIns; i++)
-      {
-        gateIns.push_back(new GatePort(true));
-      }
-      for (uint8_t i = 0; i < config.numGateOuts; i++)
-      {
-        gateOuts.push_back(new GatePort(false));
-      }
+      return port;
     }
 
     virtual void onSampleRateChange(float sampleRate)
@@ -234,71 +219,22 @@ namespace phnq
   public:
     ~Module()
     {
-      for (vector<AudioPort *>::iterator it = audioIns.begin(); it != audioIns.end();)
+      for (vector<IOPort *>::iterator it = ioPorts.begin(); it != ioPorts.end();)
       {
         delete *it;
-        it = audioIns.erase(it);
+        it = ioPorts.erase(it);
       }
-      for (vector<AudioPort *>::iterator it = audioOuts.begin(); it != audioOuts.end();)
-      {
-        delete *it;
-        it = audioOuts.erase(it);
-      }
-      for (vector<CVPort *>::iterator it = cvIns.begin(); it != cvIns.end();)
-      {
-        delete *it;
-        it = cvIns.erase(it);
-      }
-      for (vector<CVPort *>::iterator it = cvOuts.begin(); it != cvOuts.end();)
-      {
-        delete *it;
-        it = cvOuts.erase(it);
-      }
-      for (vector<GatePort *>::iterator it = gateIns.begin(); it != gateIns.end();)
-      {
-        delete *it;
-        it = gateIns.erase(it);
-      }
-      for (vector<GatePort *>::iterator it = gateOuts.begin(); it != gateOuts.end();)
-      {
-        delete *it;
-        it = gateOuts.erase(it);
-      }
-    }
-
-    AudioPort *getAudioIn(uint8_t index)
-    {
-      return index < audioIns.size() ? audioIns[index] : NULL;
-    }
-
-    AudioPort *getAudioOut(uint8_t index)
-    {
-      return index < audioOuts.size() ? audioOuts[index] : NULL;
-    }
-
-    CVPort *getCVIn(uint8_t index)
-    {
-      return index < cvIns.size() ? cvIns[index] : NULL;
-    }
-
-    CVPort *getCVOut(uint8_t index)
-    {
-      return index < cvOuts.size() ? cvOuts[index] : NULL;
-    }
-
-    GatePort *getGateIn(uint8_t index)
-    {
-      return index < gateIns.size() ? gateIns[index] : NULL;
-    }
-
-    GatePort *getGateOut(uint8_t index)
-    {
-      return index < gateOuts.size() ? gateOuts[index] : NULL;
     }
 
     IOConfig getIOConfig()
     {
-      return config;
+      return ioConfig;
+    }
+
+    vector<IOPort *> getIOPorts()
+    {
+      vector<IOPort *> ioPortsCopy = ioPorts;
+      return ioPortsCopy;
     }
 
     void doProcess(FrameInfo frameInfo)

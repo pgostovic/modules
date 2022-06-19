@@ -1,5 +1,3 @@
-#pragma once
-
 #include <cmath>
 #include "../../core/Module.hpp"
 #include <daisysp.h>
@@ -9,29 +7,23 @@ using namespace daisysp;
 
 static const float FREQ_C4 = 261.6256f;
 
-IOConfig getTestModuleIOConfig()
-{
-  IOConfig ioConfig = {0, 0, 0, 0, 0, 0};
-  ioConfig.numAudioOuts = 1;
-  ioConfig.numCVIns = 2;
-  return ioConfig;
-}
-
 struct TestModule : phnq::Module
 {
-  CVPort *pitchParam;
-  CVPort *pitchCV;
-  AudioPort *audioOut;
+  IOPort *gateIn;
+  IOPort *pitchParam;
+  IOPort *pitchCV;
+  IOPort *audioOut;
 
   Oscillator osc1;
   Oscillator osc2;
   Oscillator osc3;
 
-  TestModule() : phnq::Module(getTestModuleIOConfig())
+  TestModule()
   {
-    pitchParam = getCVIn(0)->asParam();
-    pitchCV = getCVIn(1);
-    audioOut = getAudioOut(0);
+    this->gateIn = addIOPort(IOPortType::Gate, IOPortDirection::Input);
+    this->pitchParam = addIOPort(IOPortType::Param, IOPortDirection::Input);
+    this->pitchCV = addIOPort(IOPortType::CV, IOPortDirection::Input);
+    this->audioOut = addIOPort(IOPortType::Audio, IOPortDirection::Output);
   }
 
   void onSampleRateChange(float sampleRate) override
@@ -44,6 +36,10 @@ struct TestModule : phnq::Module
     osc3.SetWaveform(Oscillator::WAVE_SAW);
   }
 
+  // void gateChanged(GatePort *gatePort)
+  // {
+  // }
+
   void process(FrameInfo frameInfo) override
   {
     float pitch = pitchParam->getValue() + pitchCV->getValue();
@@ -55,3 +51,16 @@ struct TestModule : phnq::Module
     audioOut->setValue(osc1.Process() + osc2.Process() + osc3.Process());
   }
 };
+
+// Maybe this can be replaced by a macro?
+#ifdef PHNQ_RACK
+#include <rack.hpp>
+#include "../../core/rack/RackModule.hpp"
+#include "../../core/rack/RackModuleUI.hpp"
+rack::plugin::Model *modelTestModule = rack::createModel<phnq::RackModule<TestModule>, phnq::RackModuleUI<TestModule>>("TestModule");
+#endif
+
+#ifdef PHNQ_SEED
+#include "../../core/seed/SeedModule.hpp"
+phnq::Module *moduleInstance = new TestModule();
+#endif

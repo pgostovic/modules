@@ -11,6 +11,11 @@ DaisySeed hw;
 
 phnq::FrameInfo frameInfo;
 
+const DacHandle::Channel DAC_CHANNELS[] = {DacHandle::Channel::ONE, DacHandle::Channel::TWO};
+const uint8_t ADC_PINS[] = {15, 16, 17, 18, 19, 20, 21, 24, 25, 28};
+const Pin GPIO_PINS[] = {seed::D1, seed::D2, seed::D3, seed::D4, seed::D5, seed::D6, seed::D7, seed::D8,
+                         seed::D9, seed::D10, seed::D11, seed::D12, seed::D13, seed::D14, seed::D29, seed::D30};
+
 /**
  * Seed Hardware Data Ranges
  * =========================
@@ -25,67 +30,77 @@ phnq::FrameInfo frameInfo;
  *      - gpio.Write(state) takes a boolean arg.
  */
 
-vector<GPIO *> gpioGateIns;
-vector<GPIO *> gpioGateOuts;
+struct AudioMapping
+{
+  uint8_t index;
+  phnq::IOPort *ioPort;
+};
+vector<AudioMapping> audioInMappings;
+vector<AudioMapping> audioOutMappings;
+
+struct DACMapping
+{
+  DacHandle::Channel channel;
+  phnq::IOPort *ioPort;
+};
+vector<DACMapping> dacMappings;
+
+struct ADCMapping
+{
+  uint8_t index;
+  phnq::IOPort *ioPort;
+};
+vector<ADCMapping> adcMappings;
+
+struct GPIOMapping
+{
+  GPIO *gpio;
+  phnq::IOPort *ioPort;
+};
+vector<GPIOMapping> gpioInMappings;
+vector<GPIOMapping> gpioOutMappings;
 
 static void AudioCallback(AudioHandle::InterleavingInputBuffer in, AudioHandle::InterleavingOutputBuffer out, size_t size)
 {
-  phnq::IOConfig ioConfig = moduleInstance->getIOConfig();
-
-  /**
-   * Read values from the ADC pins and set the corresponding input port values.
-   * Note: this is done outside of the sample buffer loop.
-   */
-  for (uint8_t i = 0; i < ioConfig.numCVIns; i++)
+  for (ADCMapping adcMapping : adcMappings)
   {
-    moduleInstance->getCVIn(i)->setValue(hw.adc.GetFloat(i));
+    // ADC is [0, 1], but we want [0.f, 10.f] so multiply by 10.f.
+    adcMapping.ioPort->setValue(hw.adc.GetFloat(adcMapping.index) * 10.f);
   }
 
-  /**
-   * Read states from the GPIO pins (that are configured for input) and set the
-   * corresponding port values.
-   */
-  for (uint8_t i = 0; i < ioConfig.numGateIns; i++)
+  for (GPIOMapping gpioMapping : gpioInMappings)
   {
-    moduleInstance->getGateIn(i)->setValue(gpioGateIns[i]->Read());
+    gpioMapping.ioPort->setValue(gpioMapping.gpio->Read() ? 10.f : 0.f);
   }
 
   for (size_t i = 0; i < size; i += 2)
   {
-    // Read the audio input values from the hardware.
-    for (uint8_t j = 0; j < ioConfig.numAudioIns; j++)
+    for (AudioMapping audioInMapping : audioInMappings)
     {
-      moduleInstance->getAudioIn(j)->setValue(in[i + j]);
+      audioInMapping.ioPort->setValue(in[i + audioInMapping.index]);
     }
 
     // Call module's process method. This is called once per sample.
     moduleInstance->doProcess(frameInfo);
 
-    // Set the hardware's audio output values.
-    for (uint8_t j = 0; j < ioConfig.numAudioOuts; j++)
+    for (AudioMapping audioOutMapping : audioOutMappings)
     {
-      out[i + j] = moduleInstance->getAudioOut(j)->getValue();
+      out[i + audioOutMapping.index] = audioOutMapping.ioPort->getValue();
     }
 
-    // Set the hardware's DAC output values.
-    for (uint8_t j = 0; j < ioConfig.numCVOuts; j++)
+    for (DACMapping dacMapping : dacMappings)
     {
-      float cvOutVal = moduleInstance->getCVOut(j)->getValue();
-      DacHandle::Channel channel = j == 0 ? DacHandle::Channel::ONE : DacHandle::Channel::TWO;
-      hw.dac.WriteValue(channel, (uint16_t)roundf(cvOutVal * 4095.f));
+      // this val needs scaling...
+      float cvOutVal = dacMapping.ioPort->getValue() / 10.f;
+      hw.dac.WriteValue(dacMapping.channel, (uint16_t)roundf(cvOutVal * 4095.f));
     }
 
-    // Set the hardware's GPIO states.
-    for (uint8_t j = 0; j < ioConfig.numGateOuts; j++)
+    for (GPIOMapping gpioMapping : gpioOutMappings)
     {
-      gpioGateOuts[j]->Write(moduleInstance->getGateOut(j)->getValue());
+      gpioMapping.gpio->Write(gpioMapping.ioPort->getValue() == 10.f);
     }
   }
 }
-
-const uint8_t ADC_PINS[] = {15, 16, 17, 18, 19, 20, 21, 24, 25, 28};
-const Pin GPIO_PINS[] = {seed::D1, seed::D2, seed::D3, seed::D4, seed::D5, seed::D6, seed::D7, seed::D8,
-                         seed::D9, seed::D10, seed::D11, seed::D12, seed::D13, seed::D14, seed::D29, seed::D30};
 
 int main(void)
 {
@@ -106,29 +121,68 @@ int main(void)
   cfg.chn = DacHandle::Channel::BOTH;
   hw.dac.Init(cfg);
 
-  // Configure ADC -- CV ins
-  AdcChannelConfig adcConfig[ioConfig.numCVIns];
-  for (uint8_t i = 0; i < ioConfig.numCVIns; i++)
+  // For ADC config
+  AdcChannelConfig adcConfig[ioConfig.numCVIns + ioConfig.numParams];
+
+  // Add mappings for IOPorts and corresponsing hardware interfaces...
+  uint8_t cvInIndex = 0, gpioPinIndex = 0, dacIndex = 0, audioInIndex = 0, audioOutIndex = 0;
+  for (phnq::IOPort *ioPort : moduleInstance->getIOPorts())
   {
-    adcConfig[i].InitSingle(hw.GetPin(ADC_PINS[i]));
+    if (ioPort->getDirection() == phnq::IOPortDirection::Input)
+    {
+      switch (ioPort->getType())
+      {
+      case phnq::IOPortType::CV:
+      case phnq::IOPortType::Param:
+      {
+        adcConfig[cvInIndex].InitSingle(hw.GetPin(ADC_PINS[cvInIndex]));
+        adcMappings.push_back({cvInIndex, ioPort});
+        cvInIndex++;
+        break;
+      }
+      case phnq::IOPortType::Gate:
+      {
+        GPIO *gpio = new GPIO();
+        gpio->Init(GPIO_PINS[gpioPinIndex++], GPIO::Mode::INPUT);
+        gpioInMappings.push_back({gpio, ioPort});
+        break;
+      }
+      case phnq::IOPortType::Audio:
+      {
+        audioInMappings.push_back({audioInIndex++, ioPort});
+        break;
+      }
+      }
+    }
+    else if (ioPort->getDirection() == phnq::IOPortDirection::Output)
+    {
+      switch (ioPort->getType())
+      {
+      case phnq::IOPortType::CV:
+      case phnq::IOPortType::Param:
+      {
+        dacMappings.push_back({DAC_CHANNELS[dacIndex++], ioPort});
+        break;
+      }
+      case phnq::IOPortType::Gate:
+      {
+        GPIO *gpio = new GPIO();
+        gpio->Init(GPIO_PINS[gpioPinIndex++], GPIO::Mode::OUTPUT);
+        gpioOutMappings.push_back({gpio, ioPort});
+        break;
+      }
+      case phnq::IOPortType::Audio:
+      {
+        audioOutMappings.push_back({audioOutIndex++, ioPort});
+        break;
+      }
+      }
+    }
   }
+
+  // Configure ADC -- CV ins
   hw.adc.Init(adcConfig, ioConfig.numCVIns);
   hw.adc.Start();
-
-  // Configure GPIOs -- Gates
-  uint8_t nextPinIndex = 0;
-  for (uint8_t i = 0; i < ioConfig.numGateIns; i++)
-  {
-    GPIO *gpio = new GPIO();
-    gpio->Init(GPIO_PINS[nextPinIndex++], GPIO::Mode::INPUT);
-    gpioGateIns.push_back(gpio);
-  }
-  for (uint8_t i = 0; i < ioConfig.numGateOuts; i++)
-  {
-    GPIO *gpio = new GPIO();
-    gpio->Init(GPIO_PINS[nextPinIndex++], GPIO::Mode::OUTPUT);
-    gpioGateOuts.push_back(gpio);
-  }
 
   frameInfo.sampleRate = hw.AudioSampleRate();
   frameInfo.sampleTime = 1.f / frameInfo.sampleRate;
