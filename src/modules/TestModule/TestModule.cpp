@@ -1,6 +1,7 @@
 #include <cmath>
 #include "../../core/Engine.hpp"
 #include <daisysp.h>
+#include "../../core/lib/Trigger.hpp"
 
 using namespace phnq;
 using namespace daisysp;
@@ -13,10 +14,12 @@ struct TestModule : phnq::Engine
   IOPort *pitchParam;
   IOPort *pitchCV;
   IOPort *audioOut;
+  IOPort *gateOut;
 
   Oscillator osc1;
   Oscillator osc2;
   Oscillator osc3;
+  Trigger trigger;
 
   TestModule()
   {
@@ -24,6 +27,7 @@ struct TestModule : phnq::Engine
     this->pitchParam = addIOPort(IOPortType::Param, IOPortDirection::Input);
     this->pitchCV = addIOPort(IOPortType::CV, IOPortDirection::Input);
     this->audioOut = addIOPort(IOPortType::Audio, IOPortDirection::Output);
+    this->gateOut = addIOPort(IOPortType::Gate, IOPortDirection::Output);
   }
 
   void onSampleRateChange(float sampleRate) override
@@ -34,13 +38,16 @@ struct TestModule : phnq::Engine
     osc2.SetWaveform(Oscillator::WAVE_SAW);
     osc3.Init(sampleRate);
     osc3.SetWaveform(Oscillator::WAVE_SAW);
+
+    trigger.init(sampleRate);
   }
 
   void gateChanged(IOPort *gatePort) override
   {
-    if (gatePort == this->gateIn)
+    if (gatePort == gateIn && gateIn->getValue() == 1.f)
     {
       PHNQ_LOG("============================== GATE IN CHANGE: %f", gatePort->getValue());
+      trigger.activate();
     }
   }
 
@@ -51,6 +58,8 @@ struct TestModule : phnq::Engine
     osc1.SetFreq(FREQ_C4 * std::pow(2.f, pitch));
     osc2.SetFreq(FREQ_C4 * std::pow(2.f, pitch + (2.f / 12.f)));
     osc3.SetFreq(FREQ_C4 * std::pow(2.f, pitch + (7.f / 12.f)));
+
+    gateOut->setValue(trigger.process() ? 1.f : 0.f);
 
     audioOut->setValue(osc1.Process() + osc2.Process() + osc3.Process());
   }

@@ -116,7 +116,7 @@ namespace phnq
     GateListener *gateListener;
     IOPortType type;
     IOPortDirection dir;
-    float value;
+    float value = 0.f;
 
   public:
     IOPort(GateListener *gateListener, IOPortType type, IOPortDirection dir)
@@ -124,6 +124,7 @@ namespace phnq
       this->gateListener = gateListener;
       this->type = type;
       this->dir = dir;
+      this->value = 0.f;
     }
 
     IOPortType getType()
