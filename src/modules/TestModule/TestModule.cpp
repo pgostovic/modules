@@ -1,7 +1,7 @@
 #include <cmath>
 #include "../../core/Engine.hpp"
 #include <daisysp.h>
-#include "../../core/lib/Trigger.hpp"
+#include "../../core/dsp/Trigger.hpp"
 
 using namespace phnq;
 using namespace daisysp;

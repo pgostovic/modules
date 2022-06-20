@@ -9,8 +9,9 @@
 #define PHNQ_LOG INFO
 #else
 #ifdef PHNQ_SEED
-extern DaisySeed *seedHw;
-#define PHNQ_LOG seedHw.PrintLine
+#include "daisy_seed.h"
+extern daisy::DaisySeed *seedHw;
+#define PHNQ_LOG seedHw->PrintLine
 #else
 #define PHNQ_LOG(format, ...) printf(format, ##__VA_ARGS__)
 #endif
