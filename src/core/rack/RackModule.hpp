@@ -62,20 +62,17 @@ namespace phnq
           switch (it->port->getType())
           {
           case IOPortType::Audio:
-            // scale from Eurorack convention 5 to nominal amplitude of 1.
+            // [-5, 5] -> [-1, 1] -- divide by 5.
             it->port->setValue(inputs[it->id].getVoltage() / 5.f);
             break;
           case IOPortType::Param:
-            // The phnq::Engine instance treats params and CV ins the same. Multiply the 0-1 param range by 10.
-            it->port->setValue(params[it->id].getValue() * 10.f);
+            // [0, 1] -> [0, 1] -- nothing to be done.
+            it->port->setValue(params[it->id].getValue());
             break;
           case IOPortType::CV:
-            // phnq::Engine uses the Eurorack convention, so nothing done here.
-            it->port->setValue(inputs[it->id].getVoltage());
-            break;
           case IOPortType::Gate:
-            // phnq::Engine uses the Eurorack convention, so nothing done here.
-            it->port->setValue(inputs[it->id].getVoltage());
+            // [0, 10] -> [0, 1] -- divide by 10.
+            it->port->setValue(inputs[it->id].getVoltage() / 10.f);
             break;
           }
         }
@@ -99,16 +96,13 @@ namespace phnq
           switch (it->port->getType())
           {
           case IOPortType::Audio:
-            // scale from nominal amplitude of 1 to Eurorack convention 5.
+            // [-1, 1] -> [-5, 5] -- multiply by 5.
             outputs[it->id].setVoltage(it->port->getValue() * 5.f);
             break;
           case IOPortType::CV:
-            // phnq::Engine uses the Eurorack convention, so nothing done here.
-            outputs[it->id].setVoltage(it->port->getValue());
-            break;
           case IOPortType::Gate:
-            // phnq::Engine uses the Eurorack convention, so nothing done here.
-            outputs[it->id].setVoltage(it->port->getValue());
+            // [0, 1] -> [0, 10] -- multiply by 10.
+            outputs[it->id].setVoltage(it->port->getValue() * 10.f);
             break;
           case IOPortType::Param:
             // N/A

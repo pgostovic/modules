@@ -9,6 +9,8 @@ extern phnq::Engine *moduleInstance;
 
 DaisySeed hw;
 
+DaisySeed *seedHw = &hw;
+
 phnq::FrameInfo frameInfo;
 
 const DacHandle::Channel DAC_CHANNELS[] = {DacHandle::Channel::ONE, DacHandle::Channel::TWO};
@@ -64,19 +66,22 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in, AudioHandle::
 {
   for (ADCMapping adcMapping : adcMappings)
   {
-    // ADC is [0, 1], but we want [0.f, 10.f] so multiply by 10.f.
-    adcMapping.ioPort->setValue(hw.adc.GetFloat(adcMapping.index) * 10.f);
+    // [0, 1] -> [0, 1] -- nothing to be done.
+    adcMapping.ioPort->setValue(hw.adc.GetFloat(adcMapping.index));
   }
 
-  for (GPIOMapping gpioMapping : gpioInMappings)
+  for (GPIOMapping gpioInMapping : gpioInMappings)
   {
-    gpioMapping.ioPort->setValue(gpioMapping.gpio->Read() ? 10.f : 0.f);
+    // [false, true] -> [0, 1].
+    gpioInMapping.ioPort->setValue(gpioInMapping.gpio->Read() ? 1.f : 0.f);
   }
 
+  // Iterate through audio buffer sample frames...
   for (size_t i = 0; i < size; i += 2)
   {
     for (AudioMapping audioInMapping : audioInMappings)
     {
+      // [-1, 1] -> [-1, 1] -- nothing to be done.
       audioInMapping.ioPort->setValue(in[i + audioInMapping.index]);
     }
 
@@ -85,19 +90,21 @@ static void AudioCallback(AudioHandle::InterleavingInputBuffer in, AudioHandle::
 
     for (AudioMapping audioOutMapping : audioOutMappings)
     {
+      // [-1, 1] -> [-1, 1] -- nothing to be done.
       out[i + audioOutMapping.index] = audioOutMapping.ioPort->getValue();
     }
 
     for (DACMapping dacMapping : dacMappings)
     {
-      // this val needs scaling...
-      float cvOutVal = dacMapping.ioPort->getValue() / 10.f;
+      // [0, 1] -> [0, 1] -- nothing to be done.
+      float cvOutVal = dacMapping.ioPort->getValue();
       hw.dac.WriteValue(dacMapping.channel, (uint16_t)roundf(cvOutVal * 4095.f));
     }
 
-    for (GPIOMapping gpioMapping : gpioOutMappings)
+    for (GPIOMapping gpioOutMapping : gpioOutMappings)
     {
-      gpioMapping.gpio->Write(gpioMapping.ioPort->getValue() == 10.f);
+      // [0, 1] -> [false, true].
+      gpioOutMapping.gpio->Write(roundf(gpioOutMapping.ioPort->getValue()) == 1.f);
     }
   }
 }

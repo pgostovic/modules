@@ -36,9 +36,13 @@ struct TestModule : phnq::Engine
     osc3.SetWaveform(Oscillator::WAVE_SAW);
   }
 
-  // void gateChanged(GatePort *gatePort)
-  // {
-  // }
+  void gateChanged(IOPort *gatePort) override
+  {
+    if (gatePort == this->gateIn)
+    {
+      PHNQ_LOG("============================== GATE IN CHANGE: %f", gatePort->getValue());
+    }
+  }
 
   void process(FrameInfo frameInfo) override
   {

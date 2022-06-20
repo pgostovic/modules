@@ -4,6 +4,18 @@
 #include <vector>
 #include <math.h>
 
+#ifdef PHNQ_RACK
+#include <rack.hpp>
+#define PHNQ_LOG INFO
+#else
+#ifdef PHNQ_SEED
+extern DaisySeed *seedHw;
+#define PHNQ_LOG seedHw.PrintLine
+#else
+#define PHNQ_LOG(format, ...) printf(format, ##__VA_ARGS__)
+#endif
+#endif
+
 /**
  * This is the abstraction class that the generic module extends.
  * Implementation-specific code will hold an instance of a sublass of this
@@ -73,15 +85,15 @@ namespace phnq
   };
 
   const float GATE_LOW = 0.f;
-  const float GATE_HIGH = 10.f;
-  const float GATE_LOW_THRESH = 0.1f;
-  const float GATE_HIGH_THRESH = 2.f;
+  const float GATE_HIGH = 1.f;
+  const float GATE_LOW_THRESH = 0.01f;
+  const float GATE_HIGH_THRESH = 0.2f;
 
   enum IOPortType
   {
     Audio, // nominal range of [-1, 1], clamped at [-2, 2] when setting output value
-    CV,    // nominal range of [0, 10]
-    Gate,  // low is 0.f, hight is 10.f
+    CV,    // range of [0, 1]
+    Gate,  // low is 0.f, hight is 1.f
     Param, // same as CV
   };
 
@@ -91,20 +103,25 @@ namespace phnq
     Output
   };
 
-  struct Engine;
+  struct IOPort;
+
+  struct GateListener
+  {
+    virtual void gateChanged(IOPort *gatePort) {}
+  };
 
   struct IOPort
   {
   private:
-    Engine *module;
+    GateListener *gateListener;
     IOPortType type;
     IOPortDirection dir;
     float value;
 
   public:
-    IOPort(Engine *module, IOPortType type, IOPortDirection dir)
+    IOPort(GateListener *gateListener, IOPortType type, IOPortDirection dir)
     {
-      this->module = module;
+      this->gateListener = gateListener;
       this->type = type;
       this->dir = dir;
     }
@@ -133,23 +150,25 @@ namespace phnq
         break;
       case IOPortType::Param:
       case IOPortType::CV:
-        this->value = dir == IOPortDirection::Input ? value : clamp(value, 0.f, 10.f);
+        this->value = dir == IOPortDirection::Input ? value : clamp(value, 0.f, 1.f);
         break;
       case IOPortType::Gate:
         if (this->value == GATE_HIGH && value < GATE_LOW_THRESH)
         {
-          setValue(GATE_LOW);
+          this->value = GATE_LOW;
+          gateListener->gateChanged(this);
         }
         else if (this->value == GATE_LOW && value > GATE_HIGH_THRESH)
         {
-          setValue(GATE_HIGH);
+          this->value = GATE_HIGH;
+          gateListener->gateChanged(this);
         }
         break;
       }
     }
   };
 
-  struct Engine
+  struct Engine : GateListener
   {
   private:
     IOConfig ioConfig = {0, 0, 0, 0, 0, 0, 0};
@@ -208,13 +227,9 @@ namespace phnq
       return port;
     }
 
-    virtual void onSampleRateChange(float sampleRate)
-    {
-    }
+    virtual void onSampleRateChange(float sampleRate) {}
 
-    virtual void process(FrameInfo frameInfo)
-    {
-    }
+    virtual void process(FrameInfo frameInfo) {}
 
   public:
     ~Engine()
