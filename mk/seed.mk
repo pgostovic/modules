@@ -27,10 +27,12 @@ clean-vendor:
 
 
 $(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a:
+	git submodule update --init
 	make -C $(PHNQ_DIR)/vendor/libDaisy
 	
 
 $(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a:
+	git submodule update --init
 	make -C $(PHNQ_DIR)/vendor/DaisySP
 
 install: vendor all program-dfu

@@ -26,7 +26,7 @@ LDFLAGS += -stdlib=libc++ -L $(PHNQ_DIR)/vendor/Rack-SDK -lRack -undefined dynam
 
 
 
-vendor: $(PHNQ_DIR)/vendor/Rack-SDK
+vendor: $(PHNQ_DIR)/vendor/Rack-SDK $(PHNQ_DIR)/vendor/libDaisy/Makefile $(PHNQ_DIR)/vendor/DaisySP/Makefile
 
 clean-vendor:
 	rm -rf $(PHNQ_DIR)/vendor/Rack-SDK
@@ -35,6 +35,12 @@ $(PHNQ_DIR)/vendor/Rack-SDK:
 	curl -s https://vcvrack.com/downloads/Rack-SDK-2.1.1-mac.zip > $(PHNQ_DIR)/vendor/Rack-SDK.zip
 	unzip -q -d $(PHNQ_DIR)/vendor $(PHNQ_DIR)/vendor/Rack-SDK.zip
 	rm $(PHNQ_DIR)/vendor/Rack-SDK.zip
+
+$(PHNQ_DIR)/vendor/libDaisy/Makefile:
+	git submodule update --init
+
+$(PHNQ_DIR)/vendor/DaisySP/Makefile:
+	git submodule update --init
 
 print:
 # echo $(SOURCES)
