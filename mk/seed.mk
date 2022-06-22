@@ -19,4 +19,18 @@ DAISYSP_DIR = $(PHNQ_DIR)/vendor/DaisySP
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
-install: all program-dfu
+vendor: $(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a $(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a
+
+clean-vendor:
+	make -C $(PHNQ_DIR)/vendor/libDaisy clean
+	make -C $(PHNQ_DIR)/vendor/DaisySP clean
+
+
+$(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a:
+	make -C $(PHNQ_DIR)/vendor/libDaisy
+	
+
+$(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a:
+	make -C $(PHNQ_DIR)/vendor/DaisySP
+
+install: vendor all program-dfu

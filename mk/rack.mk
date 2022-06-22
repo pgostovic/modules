@@ -36,8 +36,6 @@ $(PHNQ_DIR)/vendor/Rack-SDK:
 	unzip -q -d $(PHNQ_DIR)/vendor $(PHNQ_DIR)/vendor/Rack-SDK.zip
 	rm $(PHNQ_DIR)/vendor/Rack-SDK.zip
 
-
-
 print:
 # echo $(SOURCES)
 	echo $(MAKECMDGOALS)
