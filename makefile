@@ -11,12 +11,13 @@ $(PHNQ_DIR)/vendor/Rack-SDK:
 $(PHNQ_DIR)/vendor/DaisySP/Makefile:
 	git submodule update --init
 
-$(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a:
-	git submodule update --init
+$(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a: $(PHNQ_DIR)/vendor/DaisySP/Makefile
 	make -C $(PHNQ_DIR)/vendor/DaisySP
 
-$(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a:
+$(PHNQ_DIR)/vendor/libDaisy/Makefile:
 	git submodule update --init
+
+$(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a: $(PHNQ_DIR)/vendor/libDaisy/Makefile
 	make -C $(PHNQ_DIR)/vendor/libDaisy
 
 seed: $(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a $(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a
