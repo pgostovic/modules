@@ -26,8 +26,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.98994949"
-     inkscape:cx="355.5737"
-     inkscape:cy="194.95944"
+     inkscape:cx="351.53309"
+     inkscape:cy="196.97975"
      inkscape:document-units="mm"
      inkscape:current-layer="layer2"
      showgrid="false"
@@ -37,8 +37,8 @@
      inkscape:bbox-nodes="false"
      inkscape:snap-bbox-edge-midpoints="false"
      inkscape:window-width="1600"
-     inkscape:window-height="900"
-     inkscape:window-x="0"
+     inkscape:window-height="1044"
+     inkscape:window-x="47"
      inkscape:window-y="38"
      inkscape:window-maximized="0"
      inkscape:snap-bbox-midpoints="true"
@@ -202,9 +202,9 @@
      inkscape:label="components">
     <circle
        style="display:inline;opacity:1;vector-effect:none;fill:#ff0000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:normal"
-       id="path4954"
+       id="pitchBitch"
        cx="15.24"
-       cy="46.063263"
+       cy="41.252411"
        r="4"
        inkscape:label="pitch" />
     <circle

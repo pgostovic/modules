@@ -23,11 +23,11 @@ struct TestModule : phnq::Engine
 
   TestModule()
   {
-    this->gateIn = addIOPort(IOPortType::Gate, IOPortDirection::Input);
-    this->pitchParam = addIOPort(IOPortType::Param, IOPortDirection::Input);
-    this->pitchCV = addIOPort(IOPortType::CV, IOPortDirection::Input);
-    this->audioOut = addIOPort(IOPortType::Audio, IOPortDirection::Output);
-    this->gateOut = addIOPort(IOPortType::Gate, IOPortDirection::Output);
+    this->gateIn = addIOPort(IOPortType::Gate, IOPortDirection::Input, "gateIn");
+    this->pitchParam = addIOPort(IOPortType::Param, IOPortDirection::Input, "pitchParam");
+    this->pitchCV = addIOPort(IOPortType::CV, IOPortDirection::Input, "pitchCV");
+    this->audioOut = addIOPort(IOPortType::Audio, IOPortDirection::Output, "audioOut");
+    this->gateOut = addIOPort(IOPortType::Gate, IOPortDirection::Output, "gateOut");
   }
 
   void onSampleRateChange(float sampleRate) override
@@ -65,10 +65,7 @@ struct TestModule : phnq::Engine
   }
 };
 
-// Maybe this can be replaced by a macro?
 #ifdef PHNQ_RACK
-#include <rack.hpp>
-#include "../../core/rack/RackModule.hpp"
 #include "../../core/rack/RackModuleUI.hpp"
 rack::plugin::Model *modelTestModule = rack::createModel<phnq::RackModule<TestModule>, phnq::RackModuleUI<TestModule>>("TestModule");
 #endif

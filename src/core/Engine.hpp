@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <math.h>
+#include <assert.h>
 
 #ifdef PHNQ_RACK
 #include <rack.hpp>
@@ -53,27 +54,6 @@ namespace phnq
     float sampleTime;
   };
 
-  /**
-   * Seed Limitations
-   * ================
-   * CV ins:
-   * - Seed ADC pins are used. 10 of the possible 12 are allocated to input; the
-   *   two bi-purpose (ADC/DAC) pins are allocated for CV out use (DAC).
-   * - It is possible to increase the number of ADCs (up to 80?) in mux mode, but
-   *   this requires an extra chip.
-   * CV outs:
-   * - The two DAC pins are used.
-   * - More CV outs are possible, in theory, if some of the Seed's pins are used
-   *   to output PWM. A separate DAC chip would be needed for this.
-   * Gate ins/outs:
-   * - The 18 GPIO pins are used for gates. They can be set to read or write.
-   * Audio ins/outs
-   * - The Sees has 2 ins and 2 outs of high quality audio.
-   *
-   * See:
-   *  https://static1.squarespace.com/static/58d03fdc1b10e3bf442567b8/t/61b102adf8965f3e1cd096fd/1638990509655/Daisy_Seed_pinout.pdf
-   *
-   */
   struct IOConfig
   {
     size_t numAudioIns;  // max 2
@@ -170,6 +150,15 @@ namespace phnq
     }
   };
 
+  void assertCondition(std::string text, bool condition)
+  {
+    if (!condition)
+    {
+      PHNQ_LOG("***** Failed Assertion: %s", text.c_str());
+    }
+    assert(condition);
+  }
+
   struct Engine : GateListener
   {
   private:
@@ -177,8 +166,17 @@ namespace phnq
     FrameInfo frameInfo;
     vector<IOPort *> ioPorts;
 
+    void validateIOConfig()
+    {
+      assertCondition("max 2 audio ins", ioConfig.numAudioIns <= 2);
+      assertCondition("max 2 audio outs", ioConfig.numAudioOuts <= 2);
+      assertCondition("max 10 params + CV ins", (ioConfig.numParams + ioConfig.numCVIns) <= 10);
+      assertCondition("max 2 CV outs", ioConfig.numCVOuts <= 2);
+      assertCondition("max 18 gate ins + gate outs", (ioConfig.numGateIns + ioConfig.numCVOuts) <= 18);
+    }
+
   protected:
-    IOPort *addIOPort(IOPortType type, IOPortDirection dir)
+    IOPort *addIOPort(IOPortType type, IOPortDirection dir, std::string panelId)
     {
       IOPort *port = new IOPort(this, type, dir);
       ioPorts.push_back(port);
@@ -226,6 +224,9 @@ namespace phnq
           // Not a thing...
         }
       }
+
+      validateIOConfig();
+
       return port;
     }
 

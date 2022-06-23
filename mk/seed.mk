@@ -19,20 +19,4 @@ DAISYSP_DIR = $(PHNQ_DIR)/vendor/DaisySP
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
-vendor: $(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a $(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a
-
-clean-vendor:
-	make -C $(PHNQ_DIR)/vendor/libDaisy clean
-	make -C $(PHNQ_DIR)/vendor/DaisySP clean
-
-
-$(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a:
-	git submodule update --init
-	make -C $(PHNQ_DIR)/vendor/libDaisy
-	
-
-$(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a:
-	git submodule update --init
-	make -C $(PHNQ_DIR)/vendor/DaisySP
-
-install: vendor all program-dfu
+install: all program-dfu
