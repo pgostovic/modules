@@ -46,8 +46,10 @@ $(DIST)/plugins/%/plugin.json:
 	@mkdir -p $(@D)
 	cp $(PHNQ_DIR)/src/plugins/$*/plugin.json $@
 
-$(DIST)/plugins/%/res:
-	cp -r $(PHNQ_DIR)/src/plugins/$*/res $@
+# This will copy all resources when anythin changes under $(PHNQ_DIR)/src/plugins -- this is fine.
+$(DIST)/plugins/%/res: $(shell find $(PHNQ_DIR)/src/plugins -type f)
+	@mkdir -p $(@D)/res
+	cp -r $(PHNQ_DIR)/src/plugins/$*/res/* $@
 
 $(BUILD)/%.o: %.cpp
 	@mkdir -p $(@D)
