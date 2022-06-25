@@ -67,10 +67,14 @@ struct TestModule : phnq::Engine
 
 #ifdef PHNQ_RACK
 #include "../../core/rack/RackModuleUI.hpp"
-rack::plugin::Model *modelTestModule = rack::createModel<phnq::RackModule<TestModule>, phnq::RackModuleUI<TestModule>>("TestModule");
+struct TestModuleUI : public RackModuleUI<TestModule>
+{
+  TestModuleUI(RackModule<TestModule> *module) : RackModuleUI<TestModule>(module, "res/TestModule.svg") {}
+};
+rack::plugin::Model *modelTestModule = rack::createModel<RackModule<TestModule>, TestModuleUI>("TestModule");
 #endif
 
 #ifdef PHNQ_SEED
 #include "../../core/seed/SeedModule.hpp"
-phnq::Engine *moduleInstance = new TestModule();
+Engine *moduleInstance = new TestModule();
 #endif

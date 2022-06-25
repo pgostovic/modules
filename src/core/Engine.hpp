@@ -98,14 +98,16 @@ namespace phnq
     IOPortType type;
     IOPortDirection dir;
     float value = 0.f;
+    std::string panelId;
 
   public:
-    IOPort(GateListener *gateListener, IOPortType type, IOPortDirection dir)
+    IOPort(GateListener *gateListener, IOPortType type, IOPortDirection dir, std::string panelId)
     {
       this->gateListener = gateListener;
       this->type = type;
       this->dir = dir;
       this->value = 0.f;
+      this->panelId = panelId;
     }
 
     IOPortType getType()
@@ -148,6 +150,11 @@ namespace phnq
         break;
       }
     }
+
+    std::string getPanelId()
+    {
+      return panelId;
+    }
   };
 
   void assertCondition(std::string text, bool condition)
@@ -178,7 +185,7 @@ namespace phnq
   protected:
     IOPort *addIOPort(IOPortType type, IOPortDirection dir, std::string panelId)
     {
-      IOPort *port = new IOPort(this, type, dir);
+      IOPort *port = new IOPort(this, type, dir, panelId);
       ioPorts.push_back(port);
       if (type == IOPortType::Audio)
       {

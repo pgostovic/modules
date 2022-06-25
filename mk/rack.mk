@@ -5,7 +5,9 @@ DIST := $(BUILD)/dist
 CXX := clang
 
 SOURCES := $(shell find $(PHNQ_DIR)/src -type f -name '*.cpp') $(shell find $(PHNQ_DIR)/vendor/DaisySP/Source -type f -name '*.cpp')
+SOURCES += $(PHNQ_DIR)/vendor/pugixml/src/pugixml.cpp $(PHNQ_DIR)/vendor/fmt/src/format.cc # $(shell find $(PHNQ_DIR)/vendor/fmt/src -type f -name '*.cc')
 OBJECTS := $(patsubst $(PHNQ_DIR)/%.cpp, $(BUILD)/%.o, $(SOURCES))
+OBJECTS := $(patsubst $(PHNQ_DIR)/%.cc, $(BUILD)/%.o, $(OBJECTS))
 
 PLUGIN_NAMES := $(subst $(PHNQ_DIR)/src/plugins/,, $(wildcard $(PHNQ_DIR)/src/plugins/*))
 PLUGIN_LIB := $(patsubst %, $(DIST)/plugins/%/plugin.dylib, $(PLUGIN_NAMES))
@@ -19,14 +21,14 @@ $(error VCV Rack requires i386-based artifacts. Use arch -x86_64 make.)
 endif
 CXXFLAGS += -std=c++11 -stdlib=libc++
 CXXFLAGS += -DPHNQ_RACK
-CXXFLAGS += -I$(PHNQ_DIR)/vendor/Rack-SDK/include -I$(PHNQ_DIR)/vendor/Rack-SDK/dep/include
+CXXFLAGS += -I$(PHNQ_DIR)/vendor/Rack-SDK/include -I$(PHNQ_DIR)/vendor/Rack-SDK/dep/include -I$(PHNQ_DIR)/vendor/pugixml/src -I$(PHNQ_DIR)/vendor/fmt/include
 LDFLAGS += -stdlib=libc++ -L $(PHNQ_DIR)/vendor/Rack-SDK -lRack -undefined dynamic_lookup -fPIC -shared
 
 
 all: plugins
 
 print:
-	@echo $(MAKECMDGOALS)
+	@echo $(OBJECTS)
 
 clean:
 	rm -rf $(BUILD)
@@ -48,6 +50,10 @@ $(DIST)/plugins/%/res:
 	cp -r $(PHNQ_DIR)/src/plugins/$*/res $@
 
 $(BUILD)/%.o: %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(BUILD)/%.o: %.cc
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 

@@ -2,7 +2,10 @@
 
 #include <rack.hpp>
 #include "RackModule.hpp"
+#include "pugixml.hpp"
 #include "../Engine.hpp"
+#include <fmt/core.h>
+#include <string>
 
 using namespace rack;
 
@@ -13,11 +16,16 @@ namespace phnq
   template <class TEngine = phnq::Engine>
   struct RackModuleUI : rack::app::ModuleWidget
   {
-    RackModuleUI(RackModule<TEngine> *module)
+    RackModuleUI(RackModule<TEngine> *module, std::string panelFile)
     {
       setModule(module);
 
-      setPanel(createPanel(asset::plugin(pluginInstance, "res/TestModule.svg")));
+      PHNQ_LOG("=================== PANEL FILE: %s", panelFile.c_str());
+
+      setPanel(createPanel(asset::plugin(pluginInstance, panelFile)));
+
+      pugi::xml_document doc;
+      pugi::xml_parse_result result = doc.load_file(asset::plugin(pluginInstance, panelFile).c_str());
 
       addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
       addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, 0)));
@@ -25,8 +33,6 @@ namespace phnq
       addChild(createWidget<ScrewSilver>(Vec(box.size.x - 2 * RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
       // NOTE: when this widget is used to generate the module selector preview, module will be NULL.
-
-      float y = 0.f;
 
       if (module)
       {
@@ -38,7 +44,19 @@ namespace phnq
 
         for (IOPort *ioPort : module->getEngine()->getIOPorts())
         {
-          y += 20.f;
+          float cx = 0.f, cy = 0.f;
+
+          pugi::xpath_node node = doc.select_node(fmt::format("//circle[@id = '{}']", ioPort->getPanelId()).c_str());
+          if (node)
+          {
+            cx = std::stof(std::string(node.node().attribute("cx").value()));
+            cy = std::stof(std::string(node.node().attribute("cy").value()));
+          }
+          else
+          {
+            PHNQ_LOG("A circle with id=\"%s\" could not be found in ", ioPort->getPanelId().c_str());
+          }
+
           switch (ioPort->getType())
           {
           case IOPortType::Audio:
@@ -46,13 +64,13 @@ namespace phnq
           case IOPortType::Gate:
             if (ioPort->getDirection() == IOPortDirection::Input)
             {
-              addInput(createInputCentered<PJ301MPort>(mm2px(Vec(15.24, y)), module, inputIndex));
+              addInput(createInputCentered<PJ301MPort>(mm2px(Vec(cx, cy)), module, inputIndex));
               module->addPortMapping(inputIndex, ioPort);
               inputIndex++;
             }
             else if (ioPort->getDirection() == IOPortDirection::Output)
             {
-              addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(15.24, y)), module, outputIndex));
+              addOutput(createOutputCentered<PJ301MPort>(mm2px(Vec(cx, cy)), module, outputIndex));
               module->addPortMapping(outputIndex, ioPort);
               outputIndex++;
             }
@@ -60,7 +78,7 @@ namespace phnq
           case IOPortType::Param:
             if (ioPort->getDirection() == IOPortDirection::Input)
             {
-              addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(15.24, y)), module, paramIndex));
+              addParam(createParamCentered<RoundBlackKnob>(mm2px(Vec(cx, cy)), module, paramIndex));
               module->addPortMapping(paramIndex, ioPort);
               paramIndex++;
             }
