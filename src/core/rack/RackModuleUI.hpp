@@ -20,8 +20,6 @@ namespace phnq
     {
       setModule(module);
 
-      PHNQ_LOG("=================== PANEL FILE: %s", panelFile.c_str());
-
       setPanel(createPanel(asset::plugin(pluginInstance, panelFile)));
 
       pugi::xml_document doc;

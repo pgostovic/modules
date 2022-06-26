@@ -27,10 +27,10 @@ $(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a: $(PHNQ_DIR)/vendor/libDaisy/Makefi
 	make -C $(PHNQ_DIR)/vendor/libDaisy
 
 seed: $(PHNQ_DIR)/vendor/libDaisy/build/libdaisy.a $(PHNQ_DIR)/vendor/DaisySP/build/libdaisysp.a
-	make -f mk/seed.mk $(patsubst seed,,$(MAKECMDGOALS))
+	@make -f mk/seed.mk $(patsubst seed,,$(MAKECMDGOALS))
 
 rack: $(PHNQ_DIR)/vendor/Rack-SDK $(PHNQ_DIR)/vendor/DaisySP/Makefile $(PHNQ_DIR)/vendor/fmt/CMakeLists.txt $(PHNQ_DIR)/vendor/pugixml/CMakeLists.txt
-	arch -x86_64 make -f mk/rack.mk $(patsubst rack,,$(MAKECMDGOALS))
+	@arch -x86_64 make -f mk/rack.mk $(patsubst rack,,$(MAKECMDGOALS))
 
 .DEFAULT:
 	@echo $@
