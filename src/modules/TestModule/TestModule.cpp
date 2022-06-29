@@ -30,7 +30,7 @@ struct TestModule : phnq::Engine
     this->gateOut = addIOPort(IOPortType::Gate, IOPortDirection::Output, "gateOut");
   }
 
-  void onSampleRateChange(float sampleRate) override
+  void sampleRateDidChange(float sampleRate) override
   {
     osc1.Init(sampleRate);
     osc1.SetWaveform(Oscillator::WAVE_SAW);
@@ -42,7 +42,7 @@ struct TestModule : phnq::Engine
     trigger.init(sampleRate);
   }
 
-  void gateChanged(IOPort *gatePort) override
+  void gateValueDidChange(IOPort *gatePort) override
   {
     if (gatePort == gateIn && gateIn->getValue() == 1.f)
     {

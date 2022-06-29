@@ -42,12 +42,6 @@ using namespace std;
 
 namespace phnq
 {
-  float clamp(float val, float min, float max)
-  {
-    return val < min ? min : val > max ? max
-                                       : val;
-  }
-
   struct FrameInfo
   {
     float sampleRate;
@@ -88,7 +82,7 @@ namespace phnq
 
   struct GateListener
   {
-    virtual void gateChanged(IOPort *gatePort) {}
+    virtual void gateValueDidChange(IOPort *gatePort) {}
   };
 
   struct IOPort
@@ -140,12 +134,12 @@ namespace phnq
         if (this->value == GATE_HIGH && value < GATE_LOW_THRESH)
         {
           this->value = GATE_LOW;
-          gateListener->gateChanged(this);
+          gateListener->gateValueDidChange(this);
         }
         else if (this->value == GATE_LOW && value > GATE_HIGH_THRESH)
         {
           this->value = GATE_HIGH;
-          gateListener->gateChanged(this);
+          gateListener->gateValueDidChange(this);
         }
         break;
       }
@@ -155,16 +149,13 @@ namespace phnq
     {
       return panelId;
     }
-  };
 
-  void assertCondition(std::string text, bool condition)
-  {
-    if (!condition)
+    float clamp(float val, float min, float max)
     {
-      PHNQ_LOG("***** Failed Assertion: %s", text.c_str());
+      return val < min ? min : val > max ? max
+                                         : val;
     }
-    assert(condition);
-  }
+  };
 
   struct Engine : GateListener
   {
@@ -172,6 +163,15 @@ namespace phnq
     IOConfig ioConfig = {0, 0, 0, 0, 0, 0, 0};
     FrameInfo frameInfo;
     vector<IOPort *> ioPorts;
+
+    void assertCondition(std::string text, bool condition)
+    {
+      if (!condition)
+      {
+        PHNQ_LOG("***** Failed Assertion: %s", text.c_str());
+      }
+      assert(condition);
+    }
 
     void validateIOConfig()
     {
@@ -237,7 +237,7 @@ namespace phnq
       return port;
     }
 
-    virtual void onSampleRateChange(float sampleRate) {}
+    virtual void sampleRateDidChange(float sampleRate) {}
 
     virtual void process(FrameInfo frameInfo) {}
 
@@ -267,7 +267,7 @@ namespace phnq
       if (frameInfo.sampleRate != this->frameInfo.sampleRate)
       {
         this->frameInfo = frameInfo;
-        onSampleRateChange(frameInfo.sampleRate);
+        sampleRateDidChange(frameInfo.sampleRate);
       }
       this->process(this->frameInfo);
     }
