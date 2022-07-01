@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <queue>
 #include <math.h>
 #include <assert.h>
 
@@ -93,6 +94,8 @@ namespace phnq
     IOPortDirection dir;
     float value = 0.f;
     std::string panelId;
+    uint16_t delay;
+    queue<float> delayBuffer;
 
   public:
     IOPort(GateListener *gateListener, IOPortType type, IOPortDirection dir, std::string panelId)
@@ -102,6 +105,7 @@ namespace phnq
       this->dir = dir;
       this->value = 0.f;
       this->panelId = panelId;
+      this->delay = 0;
     }
 
     IOPortType getType()
@@ -119,8 +123,22 @@ namespace phnq
       return value;
     }
 
-    void setValue(float value)
+    void setValue(float currentValue)
     {
+      float value = currentValue;
+
+      // Queue up the value change if there is a delay set.
+      if (delay > 0)
+      {
+        delayBuffer.push(value);
+        if (delayBuffer.size() < delay)
+        {
+          return;
+        }
+        value = delayBuffer.front();
+        delayBuffer.pop();
+      }
+
       switch (type)
       {
       case IOPortType::Audio:
@@ -143,6 +161,21 @@ namespace phnq
         }
         break;
       }
+    }
+
+    /**
+     * @brief Set the number frames before a set value takes effect. This can
+     * be useful when coordinating related input ports such as CV and Gate. The
+     * CV value change may lag a bit so delaying the gate allows the CV to
+     * settle before it's value is taken.
+     *
+     * @param delay number frames before a set value takes effect.
+     * @return IOPort* for chainability.
+     */
+    IOPort *setDelay(uint16_t delay)
+    {
+      this->delay = delay;
+      return this;
     }
 
     std::string getPanelId()
@@ -240,6 +273,11 @@ namespace phnq
     virtual void sampleRateDidChange(float sampleRate) {}
 
     virtual void process(FrameInfo frameInfo) {}
+
+    FrameInfo getFrameInfo()
+    {
+      return frameInfo;
+    }
 
   public:
     ~Engine()
