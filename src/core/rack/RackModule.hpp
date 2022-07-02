@@ -66,6 +66,7 @@ namespace phnq
             it->port->setValue(inputs[it->id].getVoltage() / 5.f);
             break;
           case IOPortType::Param:
+          case IOPortType::Button:
             // [0, 1] -> [0, 1] -- nothing to be done.
             it->port->setValue(params[it->id].getValue());
             break;
@@ -105,6 +106,7 @@ namespace phnq
             outputs[it->id].setVoltage(it->port->getValue() * 10.f);
             break;
           case IOPortType::Param:
+          case IOPortType::Button:
             // N/A
             break;
           }

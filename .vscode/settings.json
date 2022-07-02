@@ -80,7 +80,9 @@
     "ios": "cpp",
     "locale": "cpp",
     "variant": "cpp",
-    "regex": "cpp"
+    "regex": "cpp",
+    "any": "cpp",
+    "typeindex": "cpp"
   },
   "cmake.configureOnOpen": true
 }

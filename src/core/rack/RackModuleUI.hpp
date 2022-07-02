@@ -81,6 +81,14 @@ namespace phnq
               paramIndex++;
             }
             break;
+          case IOPortType::Button:
+            if (ioPort->getDirection() == IOPortDirection::Input)
+            {
+              addParam(createParamCentered<VCVButton>(mm2px(Vec(cx, cy)), module, paramIndex));
+              module->addPortMapping(paramIndex, ioPort);
+              paramIndex++;
+            }
+            break;
           }
         }
       }

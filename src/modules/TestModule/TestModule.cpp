@@ -42,9 +42,9 @@ struct TestModule : phnq::Engine
     trigger.init(sampleRate);
   }
 
-  void gateValueDidChange(IOPort *gatePort) override
+  void gateValueDidChange(IOPort *gatePort, bool high) override
   {
-    if (gatePort == gateIn && gateIn->getValue() == 1.f)
+    if (high && gatePort == gateIn)
     {
       PHNQ_LOG("============================== GATE IN CHANGE: %f", gatePort->getValue());
       trigger.activate();

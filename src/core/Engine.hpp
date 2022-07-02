@@ -43,6 +43,13 @@ using namespace std;
 
 namespace phnq
 {
+  const float FREQ_C1 = 32.7032f;
+
+  inline float pitchToFrequency(float pitch)
+  {
+    return FREQ_C1 * std::pow(2.f, pitch * 10.f);
+  }
+
   struct FrameInfo
   {
     float sampleRate;
@@ -67,10 +74,11 @@ namespace phnq
 
   enum IOPortType
   {
-    Audio, // nominal range of [-1, 1], clamped at [-2, 2] when setting output value
-    CV,    // range of [0, 1]
-    Gate,  // low is 0.f, hight is 1.f
-    Param, // same as CV
+    Audio,  // nominal range of [-1, 1], clamped at [-2, 2] when setting output value
+    CV,     // range of [0, 1]
+    Gate,   // low is 0.f, hight is 1.f
+    Param,  // same as CV
+    Button, // same as Gate
   };
 
   enum IOPortDirection
@@ -83,7 +91,7 @@ namespace phnq
 
   struct GateListener
   {
-    virtual void gateValueDidChange(IOPort *gatePort) {}
+    virtual void gateValueDidChange(IOPort *gatePort, bool high) {}
   };
 
   struct IOPort
@@ -123,6 +131,11 @@ namespace phnq
       return value;
     }
 
+    float getFrequencyValue()
+    {
+      return pitchToFrequency(getValue());
+    }
+
     void setValue(float currentValue)
     {
       float value = currentValue;
@@ -148,16 +161,17 @@ namespace phnq
       case IOPortType::CV:
         this->value = dir == IOPortDirection::Input ? value : clamp(value, 0.f, 1.f);
         break;
+      case IOPortType::Button:
       case IOPortType::Gate:
         if (this->value == GATE_HIGH && value < GATE_LOW_THRESH)
         {
           this->value = GATE_LOW;
-          gateListener->gateValueDidChange(this);
+          gateListener->gateValueDidChange(this, false);
         }
         else if (this->value == GATE_LOW && value > GATE_HIGH_THRESH)
         {
           this->value = GATE_HIGH;
-          gateListener->gateValueDidChange(this);
+          gateListener->gateValueDidChange(this, true);
         }
         break;
       }
@@ -253,7 +267,7 @@ namespace phnq
           ioConfig.numGateOuts++;
         }
       }
-      else if (type == IOPortType::Param)
+      else if (type == IOPortType::Param || type == IOPortType::Button)
       {
         if (dir == IOPortDirection::Input)
         {
