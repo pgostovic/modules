@@ -324,7 +324,11 @@ void start()
       ledMapping.led->Update();
     }
 
-    // System::Delay(1);
+    /**
+     * This small delay seems to prevent jittery buttons. Without it, the buttons
+     * sometimes trigger multiple times per press.
+     */
+    System::Delay(1);
   }
 }
 
