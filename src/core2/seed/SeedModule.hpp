@@ -127,7 +127,7 @@ void setupPinMappings()
   {
     ADCMapping<phnq::engine::CVIn> mapping = {ADC_CHANNELS[cvInMappings.size() + paramMappings.size()], cvIn};
     cvInMappings.push_back(mapping);
-    PHNQ_LOG("  [ADC %d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
+    PHNQ_LOG("  [ADC %d] CV In \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
   }
 
   for (auto *param : engine->getParams())
@@ -136,7 +136,7 @@ void setupPinMappings()
     {
       ADCMapping<phnq::engine::Param> mapping = {ADC_CHANNELS[cvInMappings.size() + paramMappings.size()], param};
       paramMappings.push_back(mapping);
-      PHNQ_LOG("  [ADC %d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
+      PHNQ_LOG("  [ADC %d] Param \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
     }
   }
 
@@ -144,7 +144,7 @@ void setupPinMappings()
   {
     DACMapping mapping = {DAC_CHANNELS[dacMappings.size()], cvOut};
     dacMappings.push_back(mapping);
-    PHNQ_LOG("  [DAC OUT %d] \"%s\"", mapping.channel == DacHandle::Channel::ONE ? 1 : 2, mapping.port->getId().c_str());
+    PHNQ_LOG("  [DAC OUT %d] CV Out \"%s\"", mapping.channel == DacHandle::Channel::ONE ? 1 : 2, mapping.port->getId().c_str());
   }
 
   uint16_t gpioIndex = 0;
@@ -157,7 +157,7 @@ void setupPinMappings()
       mapping.channel = GPIO_CHANNELS[gpioIndex++];
       mapping.port = (phnq::engine::Button *)param;
       buttonMappings.push_back(mapping);
-      PHNQ_LOG("  [D%d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
+      PHNQ_LOG("  [D%d] Button \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
     }
   }
 
@@ -167,7 +167,7 @@ void setupPinMappings()
     mapping.channel = GPIO_CHANNELS[gpioIndex++];
     mapping.port = gateIn;
     gpioInMappings.push_back(mapping);
-    PHNQ_LOG("  [D%d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
+    PHNQ_LOG("  [D%d] Gate In \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
   }
 
   for (auto *gateOut : engine->getGateOuts())
@@ -176,7 +176,7 @@ void setupPinMappings()
     mapping.channel = GPIO_CHANNELS[gpioIndex++];
     mapping.port = gateOut;
     gpioOutMappings.push_back(mapping);
-    PHNQ_LOG("  [D%d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
+    PHNQ_LOG("  [D%d] Gate Out \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
   }
 
   for (auto *light : engine->getLights())
@@ -185,7 +185,7 @@ void setupPinMappings()
     mapping.channel = GPIO_CHANNELS[gpioIndex++];
     mapping.port = light;
     ledMappings.push_back(mapping);
-    PHNQ_LOG("  [D%d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
+    PHNQ_LOG("  [D%d] LED \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
   }
 }
 
@@ -214,7 +214,7 @@ void configureIO()
   hw.adc.Init(adcConfig, numADCs);
 
   // Configure GPIO -- Gate ins and outs, lights
-  PHNQ_LOG("Configure GPIO (gate ins/outs, lights, butttons)");
+  PHNQ_LOG("Configure GPIO (gate ins/outs, lights, buttons)");
   for (GPIOMapping<phnq::engine::Button> mapping : buttonMappings)
   {
     mapping.gpio->Init(mapping.channel.pin, GPIO::Mode::INPUT, GPIO::Pull::PULLUP);
