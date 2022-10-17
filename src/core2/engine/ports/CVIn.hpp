@@ -6,11 +6,11 @@ namespace phnq
 {
   namespace engine
   {
-    struct ControlIn : Port<float>
+    struct CVIn : Port<float>
     {
-      struct ControlChangeListener
+      struct CVInChangeListener
       {
-        virtual void controlValueDidChange(ControlIn *port, float value){};
+        virtual void cvInValueDidChange(CVIn *port, float value){};
       };
 
       void setValue(float value) override
@@ -22,19 +22,19 @@ namespace phnq
           Port::setValue(value);
           if (this->listener)
           {
-            this->listener->controlValueDidChange(this, value);
+            this->listener->cvInValueDidChange(this, value);
           }
         }
       }
 
-      virtual ControlIn *setListener(ControlChangeListener *listener)
+      virtual CVIn *setListener(CVInChangeListener *listener)
       {
         this->listener = listener;
         return this;
       }
 
     private:
-      ControlChangeListener *listener = NULL;
+      CVInChangeListener *listener = NULL;
     };
   }
 }

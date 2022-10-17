@@ -55,7 +55,7 @@ struct AudioMapping
 struct DACMapping
 {
   DacHandle::Channel channel;
-  phnq::engine::ControlOut *port;
+  phnq::engine::CVOut *port;
 };
 
 template <class T>
@@ -88,7 +88,7 @@ phnq::engine::FrameInfo frameInfo;
 std::vector<AudioMapping<phnq::engine::AudioIn>> audioInMappings;
 std::vector<AudioMapping<phnq::engine::AudioOut>> audioOutMappings;
 std::vector<DACMapping> dacMappings;
-std::vector<ADCMapping<phnq::engine::ControlIn>> controlInMappings;
+std::vector<ADCMapping<phnq::engine::CVIn>> cvInMappings;
 std::vector<ADCMapping<phnq::engine::Param>> paramMappings;
 std::vector<GPIOMapping<phnq::engine::Button>> buttonMappings;
 std::vector<GPIOMapping<phnq::engine::GateIn>> gpioInMappings;
@@ -123,10 +123,10 @@ void setupPinMappings()
     PHNQ_LOG("  [Audio Out %d] \"%s\"", mapping.index + 1, mapping.port->getId().c_str());
   }
 
-  for (auto *controlIn : engine->getControlIns())
+  for (auto *cvIn : engine->getCVIns())
   {
-    ADCMapping<phnq::engine::ControlIn> mapping = {ADC_CHANNELS[controlInMappings.size() + paramMappings.size()], controlIn};
-    controlInMappings.push_back(mapping);
+    ADCMapping<phnq::engine::CVIn> mapping = {ADC_CHANNELS[cvInMappings.size() + paramMappings.size()], cvIn};
+    cvInMappings.push_back(mapping);
     PHNQ_LOG("  [ADC %d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
   }
 
@@ -134,15 +134,15 @@ void setupPinMappings()
   {
     if (param->getType() != phnq::engine::Param::BUTTON)
     {
-      ADCMapping<phnq::engine::Param> mapping = {ADC_CHANNELS[controlInMappings.size() + paramMappings.size()], param};
+      ADCMapping<phnq::engine::Param> mapping = {ADC_CHANNELS[cvInMappings.size() + paramMappings.size()], param};
       paramMappings.push_back(mapping);
       PHNQ_LOG("  [ADC %d] \"%s\"", mapping.channel.index, mapping.port->getId().c_str());
     }
   }
 
-  for (auto *controlOut : engine->getControlOuts())
+  for (auto *cvOut : engine->getCVOuts())
   {
-    DACMapping mapping = {DAC_CHANNELS[dacMappings.size()], controlOut};
+    DACMapping mapping = {DAC_CHANNELS[dacMappings.size()], cvOut};
     dacMappings.push_back(mapping);
     PHNQ_LOG("  [DAC OUT %d] \"%s\"", mapping.channel == DacHandle::Channel::ONE ? 1 : 2, mapping.port->getId().c_str());
   }
@@ -201,9 +201,9 @@ void configureIO()
 
   // Configure ADC -- CV ins, Params
   PHNQ_LOG("Configure ADC (CV ins, params)");
-  size_t numADCs = controlInMappings.size() + paramMappings.size();
+  size_t numADCs = cvInMappings.size() + paramMappings.size();
   adcConfig = static_cast<AdcChannelConfig *>(calloc(numADCs, sizeof(AdcChannelConfig)));
-  for (ADCMapping<phnq::engine::ControlIn> mapping : controlInMappings)
+  for (ADCMapping<phnq::engine::CVIn> mapping : cvInMappings)
   {
     adcConfig[mapping.channel.index].InitSingle(mapping.channel.pin);
   }
@@ -281,7 +281,7 @@ void start()
   while (true)
   {
     // ADC -- Control Ins
-    for (ADCMapping<phnq::engine::ControlIn> mapping : controlInMappings)
+    for (ADCMapping<phnq::engine::CVIn> mapping : cvInMappings)
     {
       mapping.port->setValue(hw.adc.GetFloat(mapping.channel.index) * 2.f - 1.f);
     }

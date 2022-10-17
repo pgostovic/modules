@@ -14,15 +14,15 @@ namespace phnq
     {
     private:
       engine::Engine *engine = new TEngine();
-      map<engine::BasePort *, u_int8_t> portIndexes;
+      std::map<engine::BasePort *, u_int8_t> portIndexes;
 
     public:
       RackModule()
       {
         portIndexes = getPortIndexes(engine);
         config(engine->getParams().size(),
-               engine->getAudioIns().size() + engine->getControlIns().size() + engine->getGateIns().size(),
-               engine->getAudioOuts().size() + engine->getControlOuts().size() + engine->getGateOuts().size(),
+               engine->getAudioIns().size() + engine->getCVIns().size() + engine->getGateIns().size(),
+               engine->getAudioOuts().size() + engine->getCVOuts().size() + engine->getGateOuts().size(),
                engine->getLights().size());
       }
 
@@ -43,9 +43,9 @@ namespace phnq
           audioIn->setValue(inputs[portIndexes[audioIn]].getVoltage() / 5.f);
         }
 
-        for (engine::ControlIn *controlIn : engine->getControlIns())
+        for (engine::CVIn *cvIn : engine->getCVIns())
         {
-          controlIn->setValue(inputs[portIndexes[controlIn]].getVoltage() / 10.f);
+          cvIn->setValue(inputs[portIndexes[cvIn]].getVoltage() / 10.f);
         }
 
         for (engine::GateIn *gateIn : engine->getGateIns())
@@ -72,9 +72,9 @@ namespace phnq
           outputs[portIndexes[audioOut]].setVoltage(audioOut->getValue() * 5.f);
         }
 
-        for (engine::ControlOut *controlOut : engine->getControlOuts())
+        for (engine::CVOut *cvOut : engine->getCVOuts())
         {
-          outputs[portIndexes[controlOut]].setVoltage(controlOut->getValue() * 10.f);
+          outputs[portIndexes[cvOut]].setVoltage(cvOut->getValue() * 10.f);
         }
 
         for (engine::GateOut *gateOut : engine->getGateOuts())
@@ -98,7 +98,7 @@ namespace phnq
       {
         portIndexes[port] = index++;
       }
-      for (engine::BasePort *port : engine->getControlIns())
+      for (engine::BasePort *port : engine->getCVIns())
       {
         portIndexes[port] = index++;
       }
@@ -112,7 +112,7 @@ namespace phnq
       {
         portIndexes[port] = index++;
       }
-      for (engine::BasePort *port : engine->getControlOuts())
+      for (engine::BasePort *port : engine->getCVOuts())
       {
         portIndexes[port] = index++;
       }

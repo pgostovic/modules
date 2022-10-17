@@ -17,7 +17,7 @@ namespace phnq
     struct RackModuleUI : app::ModuleWidget
     {
       TEngine *engine;
-      map<engine::BasePort *, u_int8_t> portIndexes;
+      std::map<engine::BasePort *, u_int8_t> portIndexes;
       pugi::xml_document panelSvgDoc;
 
       RackModuleUI(RackModule<TEngine> *module, std::string panelFile)
@@ -72,7 +72,7 @@ namespace phnq
       }
 
       template <class TPortWidget>
-      void addInputPort(phnq::engine::ControlIn *inputPort)
+      void addInputPort(phnq::engine::CVIn *inputPort)
       {
         addInput(createInputCentered<TPortWidget>(mm2px(getLocationForId(inputPort->getId())), module, portIndexes[inputPort]));
       }
@@ -90,7 +90,7 @@ namespace phnq
       }
 
       template <class TPortWidget>
-      void addOutputPort(phnq::engine::ControlOut *outputPort)
+      void addOutputPort(phnq::engine::CVOut *outputPort)
       {
         addOutput(createOutputCentered<TPortWidget>(mm2px(getLocationForId(outputPort->getId())), module, portIndexes[outputPort]));
       }

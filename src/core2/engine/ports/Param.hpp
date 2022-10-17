@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ControlIn.hpp"
+#include "CVIn.hpp"
 
 namespace phnq
 {
   namespace engine
   {
-    struct Param : ControlIn
+    struct Param : CVIn
     {
       enum Type
       {
@@ -14,9 +14,9 @@ namespace phnq
         BUTTON,
       };
 
-      Param *setListener(ControlChangeListener *listener) override
+      Param *setListener(CVInChangeListener *listener) override
       {
-        return static_cast<Param *>(ControlIn::setListener(listener));
+        return static_cast<Param *>(CVIn::setListener(listener));
       }
 
       Param *setNumSteps(uint16_t numSteps)
@@ -33,7 +33,7 @@ namespace phnq
           value = interval * truncf(value / interval);
         }
 
-        ControlIn::setValue(value);
+        CVIn::setValue(value);
       }
 
       uint16_t getStepValue()

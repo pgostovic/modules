@@ -6,7 +6,7 @@ using namespace phnq::engine;
 using Osc = daisysp::VariableShapeOscillator;
 using Glide = daisysp::Port;
 
-struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeListener, Button::ButtonChangeListener
+struct PolyVox : Engine, GateIn::GateChangeListener, CVIn::CVInChangeListener, Button::ButtonChangeListener
 {
   /*****************
    ***** PORTS *****
@@ -18,7 +18,7 @@ struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeLis
   AudioOut *audioOutRight = createAudioOut("audioOutRight");
 
   GateIn *addNoteGateIn = createGateIn("addNoteGate")->setListener(this);
-  ControlIn *addNoteCVIn = createControlIn("addNoteCV")->setListener(this);
+  CVIn *addNoteCVIn = createCVIn("addNoteCV")->setListener(this);
 
   Button *addChordButton = createButton("addChord")->setListener(this);
   Light *addChordModeLED = createLight("addChordMode");
@@ -34,10 +34,10 @@ struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeLis
   Param *shapeKnob = createParam("shape")->setListener(this);
   Param *glideKnob = createParam("glide")->setListener(this);
 
-  ControlIn *tuneCVIn = createControlIn("tuneCV")->setListener(this);
-  ControlIn *detuneCVIn = createControlIn("detuneCV")->setListener(this);
-  ControlIn *shapeCVIn = createControlIn("shapeCV")->setListener(this);
-  ControlIn *glideCVIn = createControlIn("glideCV")->setListener(this);
+  CVIn *tuneCVIn = createCVIn("tuneCV")->setListener(this);
+  CVIn *detuneCVIn = createCVIn("detuneCV")->setListener(this);
+  CVIn *shapeCVIn = createCVIn("shapeCV")->setListener(this);
+  CVIn *glideCVIn = createCVIn("glideCV")->setListener(this);
 
   /*****************
    ***** STATE *****
@@ -84,7 +84,7 @@ struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeLis
     }
   }
 
-  void controlValueDidChange(ControlIn *port, float value) override
+  void cvInValueDidChange(CVIn *port, float value) override
   {
     // if (port == addChordButton && addChordButton->getStepValue() == 1)
     // {

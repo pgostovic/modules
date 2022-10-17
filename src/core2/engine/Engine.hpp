@@ -5,8 +5,8 @@
 #include "ports/AudioOut.hpp"
 #include "ports/GateIn.hpp"
 #include "ports/GateOut.hpp"
-#include "ports/ControlIn.hpp"
-#include "ports/ControlOut.hpp"
+#include "ports/CVIn.hpp"
+#include "ports/CVOut.hpp"
 #include "ports/Param.hpp"
 #include "ports/Button.hpp"
 #include "ports/Light.hpp"
@@ -29,8 +29,8 @@
  * Ports:
  * - AudioIn: audio input jack, nominally +/-1.0, but can be higher.
  * - AudioOut: audio output jack, nominally +/-1.0, but can be higher, clamped to +/-2.0.
- * - ControlIn: CV input jack, +/-1.0 (clamped).
- * - ControlOut: CV output jack, +/-1.0 (clamped).
+ * - CVIn: CV input jack, +/-1.0 (clamped).
+ * - CVOut: CV output jack, +/-1.0 (clamped).
  * - GateIn: trigger/gate input jack, boolean.
  * - GateOut: trigger/gate output jack, boolean.
  * - Param: knob/button/encoder (UI elements), 0.0 to 1.0 (clamped).
@@ -60,8 +60,8 @@ namespace phnq
       FrameInfo frameInfo;
       std::vector<AudioIn *> audioIns;
       std::vector<AudioOut *> audioOuts;
-      std::vector<ControlIn *> controlIns;
-      std::vector<ControlOut *> controlOuts;
+      std::vector<CVIn *> cvIns;
+      std::vector<CVOut *> cvOuts;
       std::vector<GateIn *> gateIns;
       std::vector<GateOut *> gateOuts;
       std::vector<Param *> params;
@@ -82,14 +82,14 @@ namespace phnq
         return this->audioOuts;
       }
 
-      const std::vector<ControlIn *> getControlIns()
+      const std::vector<CVIn *> getCVIns()
       {
-        return this->controlIns;
+        return this->cvIns;
       }
 
-      const std::vector<ControlOut *> getControlOuts()
+      const std::vector<CVOut *> getCVOuts()
       {
-        return this->controlOuts;
+        return this->cvOuts;
       }
 
       const std::vector<GateIn *> getGateIns()
@@ -139,18 +139,18 @@ namespace phnq
         return static_cast<AudioOut *>(audioOut->setId(id));
       }
 
-      ControlIn *createControlIn(std::string id)
+      CVIn *createCVIn(std::string id)
       {
-        ControlIn *controlIn = new ControlIn();
-        this->controlIns.push_back(controlIn);
-        return static_cast<ControlIn *>(controlIn->setId(id));
+        CVIn *cvIn = new CVIn();
+        this->cvIns.push_back(cvIn);
+        return static_cast<CVIn *>(cvIn->setId(id));
       }
 
-      ControlOut *createControlOut(std::string id)
+      CVOut *createCVOut(std::string id)
       {
-        ControlOut *controlOut = new ControlOut();
-        this->controlOuts.push_back(controlOut);
-        return static_cast<ControlOut *>(controlOut->setId(id));
+        CVOut *cvOut = new CVOut();
+        this->cvOuts.push_back(cvOut);
+        return static_cast<CVOut *>(cvOut->setId(id));
       }
 
       GateIn *createGateIn(std::string id)

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ControlOut.hpp"
+#include "CVOut.hpp"
 
 namespace phnq
 {
   namespace engine
   {
-    struct Light : ControlOut
+    struct Light : CVOut
     {
     };
   }

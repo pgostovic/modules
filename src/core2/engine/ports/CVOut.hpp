@@ -6,7 +6,7 @@ namespace phnq
 {
   namespace engine
   {
-    struct ControlOut : Port<float>
+    struct CVOut : Port<float>
     {
       void setValue(float value) override
       {
