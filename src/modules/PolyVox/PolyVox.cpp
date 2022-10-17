@@ -53,9 +53,9 @@ struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeLis
     updateLEDs();
   }
 
-  /*****************
+  /******************
    ***** EVENTS *****
-   *****************/
+   ******************/
   void gateValueDidChange(GateIn *gateIn, bool value) override
   {
     if (gateIn == addNoteGateIn && value && isWriteMode)
@@ -95,6 +95,9 @@ struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeLis
     // PHNQ_LOG("============= CONTROL: %s %f", port->getId().c_str(), value);
   }
 
+  /**********************
+   ***** OPERATIONS *****
+   **********************/
   void setChordWriteModeEnabled(bool enabled)
   {
     if (isWriteMode != enabled)
@@ -163,6 +166,7 @@ struct PolyVox : Engine, GateIn::GateChangeListener, ControlIn::ControlChangeLis
   {
     addChordModeLED->setValue(isWriteMode ? 1.f : 0.f);
 
+    // Display the current sequence position in binary on the LEDs.
     seqPos1LED->setValue((seqPos + 1) & 1 << 0 ? 1.f : 0.f);
     seqPos2LED->setValue((seqPos + 1) & 1 << 1 ? 1.f : 0.f);
     seqPos3LED->setValue((seqPos + 1) & 1 << 2 ? 1.f : 0.f);
