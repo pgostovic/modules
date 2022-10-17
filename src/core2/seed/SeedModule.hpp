@@ -1,4 +1,25 @@
-// #pragma once
+#pragma once
+
+/**
+ * Seed Hardware Data Ranges
+ * =========================
+ * 1. Audio
+ *      - in/out [-1, 1]
+ *      - yields 0dBFs @ 1Vrms
+ * 2. ADC (CV in)
+ *      - hw.adc.GetFloat(x) [0, 1]
+ *      - 0 to 3V3
+ * 3. DAC (CV out)
+ *      - hw.dac.WriteValue(chan, val) [0, 4095] and [0, 255] for 12-bit, 8-bit respectively.
+ *      - 0 to 3V3
+ * 4. GPIO (gate in/out)
+ *      - gpio.Read() returns a boolean.
+ *      - gpio.Write(state) takes a boolean arg.
+ *      - 0 to 3V3
+ *
+ * Daisy Seed Data Sheet:
+ * https://static1.squarespace.com/static/58d03fdc1b10e3bf442567b8/t/6227e6236f02fb68d1577146/1646781988478/Daisy_Seed_datasheet_v1.0.3.pdf
+ */
 
 // /**
 //  * @file SeedModule.hpp
