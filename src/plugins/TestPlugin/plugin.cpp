@@ -9,6 +9,7 @@ void init(Plugin *p)
   // Add modules here
   p->addModel(modelTestModule);
   p->addModel(modelChordSeq);
+  p->addModel(modelPolyVox);
 
   INFO("HELLOx");
   // Any other plugin initialization may go here.

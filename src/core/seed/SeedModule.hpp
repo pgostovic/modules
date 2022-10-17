@@ -69,52 +69,14 @@ struct GPIOMapping
 vector<GPIOMapping> gpioInMappings;
 vector<GPIOMapping> gpioOutMappings;
 
-static void AudioCallback(AudioHandle::InterleavingInputBuffer in, AudioHandle::InterleavingOutputBuffer out, size_t size)
+struct LedMapping
 {
-  for (ADCMapping adcMapping : adcMappings)
-  {
-    // [0, 1] -> [0, 1] -- nothing to be done.
-    adcMapping.ioPort->setValue(hw.adc.GetFloat(adcMapping.index));
-  }
+  daisy::Led *led;
+  phnq::IOPort *ioPort;
+};
+vector<LedMapping> ledMappings;
 
-  for (GPIOMapping gpioInMapping : gpioInMappings)
-  {
-    // [false, true] -> [0, 1].
-    gpioInMapping.ioPort->setValue(gpioInMapping.gpio->Read() ? 1.f : 0.f);
-  }
-
-  // Iterate through audio buffer sample frames...
-  for (size_t i = 0; i < size; i += 2)
-  {
-    for (AudioMapping audioInMapping : audioInMappings)
-    {
-      // [-1, 1] -> [-1, 1] -- nothing to be done.
-      audioInMapping.ioPort->setValue(in[i + audioInMapping.index]);
-    }
-
-    // Call module's process method. This is called once per sample.
-    moduleInstance->doProcess(frameInfo);
-
-    for (AudioMapping audioOutMapping : audioOutMappings)
-    {
-      // [-1, 1] -> [-1, 1] -- nothing to be done.
-      out[i + audioOutMapping.index] = audioOutMapping.ioPort->getValue();
-    }
-
-    for (DACMapping dacMapping : dacMappings)
-    {
-      // [0, 1] -> [0, 1] -- nothing to be done.
-      float cvOutVal = dacMapping.ioPort->getValue();
-      hw.dac.WriteValue(dacMapping.channel, (uint16_t)roundf(cvOutVal * 4095.f));
-    }
-
-    for (GPIOMapping gpioOutMapping : gpioOutMappings)
-    {
-      // [0, 1] -> [false, true].
-      gpioOutMapping.gpio->Write(roundf(gpioOutMapping.ioPort->getValue()) == 1.f);
-    }
-  }
-}
+static void AudioCallback(AudioHandle::InterleavingInputBuffer in, AudioHandle::InterleavingOutputBuffer out, size_t size);
 
 int main(void)
 {
@@ -155,6 +117,7 @@ int main(void)
         break;
       }
       case phnq::IOPortType::Gate:
+      case phnq::IOPortType::Button:
       {
         GPIO *gpio = new GPIO();
         gpio->Init(GPIO_PINS[gpioPinIndex++], GPIO::Mode::INPUT);
@@ -166,6 +129,9 @@ int main(void)
         audioInMappings.push_back({audioInIndex++, ioPort});
         break;
       }
+      case phnq::IOPortType::Led:
+        // N/A
+        break;
       }
     }
     else if (ioPort->getDirection() == phnq::IOPortDirection::Output)
@@ -173,7 +139,6 @@ int main(void)
       switch (ioPort->getType())
       {
       case phnq::IOPortType::CV:
-      case phnq::IOPortType::Param:
       {
         dacMappings.push_back({DAC_CHANNELS[dacIndex++], ioPort});
         break;
@@ -190,6 +155,17 @@ int main(void)
         audioOutMappings.push_back({audioOutIndex++, ioPort});
         break;
       }
+      case phnq::IOPortType::Led:
+      {
+        daisy::Led *led = new daisy::Led();
+        led->Init(GPIO_PINS[gpioPinIndex++], false);
+        ledMappings.push_back({led, ioPort});
+        break;
+      }
+      case phnq::IOPortType::Param:
+      case phnq::IOPortType::Button:
+        // N/A
+        break;
       }
     }
   }
@@ -206,5 +182,58 @@ int main(void)
   // Loop forever
   for (;;)
   {
+    for (ADCMapping adcMapping : adcMappings)
+    {
+      // [0, 1] -> [0, 1] -- nothing to be done.
+      adcMapping.ioPort->setValue(hw.adc.GetFloat(adcMapping.index));
+    }
+
+    for (GPIOMapping gpioInMapping : gpioInMappings)
+    {
+      // [false, true] -> [0, 1].
+      gpioInMapping.ioPort->setValue(gpioInMapping.gpio->Read() ? 1.f : 0.f);
+    }
+
+    for (DACMapping dacMapping : dacMappings)
+    {
+      // [0, 1] -> [0, 4095].
+      float cvOutVal = dacMapping.ioPort->getValue();
+      hw.dac.WriteValue(dacMapping.channel, (uint16_t)roundf(cvOutVal * 4095.f));
+    }
+
+    for (GPIOMapping gpioOutMapping : gpioOutMappings)
+    {
+      // [0, 1] -> [false, true].
+      gpioOutMapping.gpio->Write(roundf(gpioOutMapping.ioPort->getValue()) == 1.f);
+    }
+
+    for (LedMapping ledMapping : ledMappings)
+    {
+      // [0, 1] -> [0, 1] -- nothing to be done.
+      ledMapping.led->Set(ledMapping.ioPort->getValue());
+      ledMapping.led->Update();
+    }
+  }
+}
+
+static void AudioCallback(AudioHandle::InterleavingInputBuffer in, AudioHandle::InterleavingOutputBuffer out, size_t size)
+{
+  // Iterate through audio buffer sample frames...
+  for (size_t i = 0; i < size; i += 2)
+  {
+    for (AudioMapping audioInMapping : audioInMappings)
+    {
+      // [-1, 1] -> [-1, 1] -- nothing to be done.
+      audioInMapping.ioPort->setValue(in[i + audioInMapping.index]);
+    }
+
+    // Call module's process method. This is called once per sample.
+    moduleInstance->doProcess(frameInfo);
+
+    for (AudioMapping audioOutMapping : audioOutMappings)
+    {
+      // [-1, 1] -> [-1, 1] -- nothing to be done.
+      out[i + audioOutMapping.index] = audioOutMapping.ioPort->getValue();
+    }
   }
 }

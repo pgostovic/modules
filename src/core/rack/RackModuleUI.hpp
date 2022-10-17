@@ -39,12 +39,13 @@ namespace phnq
         uint8_t paramIndex = 0;
         uint8_t inputIndex = 0;
         uint8_t outputIndex = 0;
+        uint8_t ledIndex = 0;
 
         for (IOPort *ioPort : module->getEngine()->getIOPorts())
         {
           float cx = 0.f, cy = 0.f;
 
-          pugi::xpath_node node = doc.select_node(fmt::format("//circle[@id = '{}']", ioPort->getPanelId()).c_str());
+          pugi::xpath_node node = doc.select_node(fmt::format("//*[@id = '{}']", ioPort->getPanelId()).c_str());
           if (node)
           {
             cx = std::stof(std::string(node.node().attribute("cx").value()));
@@ -87,6 +88,14 @@ namespace phnq
               addParam(createParamCentered<VCVButton>(mm2px(Vec(cx, cy)), module, paramIndex));
               module->addPortMapping(paramIndex, ioPort);
               paramIndex++;
+            }
+            break;
+          case IOPortType::Led:
+            if (ioPort->getDirection() == IOPortDirection::Output)
+            {
+              addChild(createLightCentered<MediumLight<RedLight>>(mm2px(Vec(cx, cy)), module, ledIndex));
+              module->addPortMapping(ledIndex, ioPort);
+              ledIndex++;
             }
             break;
           }

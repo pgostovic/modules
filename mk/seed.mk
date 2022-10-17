@@ -1,7 +1,9 @@
 PHNQ_DIR ?= .
 
-# Project Name
-TARGET ?= ChordSeq
+ifeq ($(TARGET),)
+$(error No TARGET specified -- i.e. TARGET=PolyVox make seed install)
+endif
+
 MODULE_DIR := $(PHNQ_DIR)/src/modules/$(TARGET)
 
 ifeq ($(wildcard $(PHNQ_DIR)/src/modules/$(TARGET)),)

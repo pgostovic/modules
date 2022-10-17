@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg width="60.959999mm" height="128.5mm" viewBox="0 0 60.959999 128.5" version="1.1" id="svg9203"
+   inkscape:version="1.2 (dc2aeda, 2022-05-15)" sodipodi:docname="ChordSeq2.svg" xml:space="preserve"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+   <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+      <rect style="fill:#ffffff;stroke-width:0.536345;stroke-linejoin:bevel" id="rect11743" width="60.959999"
+         height="128.5" x="0" y="0" /><text xml:space="preserve"
+         style="font-weight:bold;font-size:2.82223px;font-family:Arial;-inkscape-font-specification:'Arial, Bold';fill:#000000;stroke-width:0.471001;stroke-linejoin:bevel"
+         x="23.834383" y="18.476267" id="text11556" inkscape:label="text11556">
+         <tspan sodipodi:role="line" id="tspan11554" style="stroke-width:0.471" x="23.834383" y="18.476267">ChordSeq
+         </tspan>
+      </text>
+      <ellipse style="fill:#ff0000;stroke-width:0.471001;stroke-linejoin:bevel" id="detune" cx="16.166733"
+         cy="37.599201" rx="6.189549" ry="6.9285998" />
+   </g>
+</svg>

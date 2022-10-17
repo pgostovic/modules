@@ -41,31 +41,34 @@
 using namespace phnq;
 using namespace daisysp;
 
+using Osc = VariableSawOscillator;
+
 struct ChordSeq : phnq::Engine
 {
   size_t chordIndex = 0;
   vector<vector<float>> chords;
-  vector<Oscillator *> oscillators;
+  vector<Osc *> oscillators;
+  bool isChordInsert = false;
 
   IOPort *nextChordGate;
   IOPort *nextChordButton;
   IOPort *resetGate;
   IOPort *resetButton;
-  IOPort *addChordGate;
   IOPort *addChordButton;
-  IOPort *removeChordGate;
   IOPort *removeChordButton;
 
   IOPort *addNoteGate;
   IOPort *addNoteButton;
   IOPort *addNoteCV;
-  IOPort *removeNoteGate;
-  IOPort *removeNoteButton;
+  IOPort *addNotePitch;
 
   IOPort *detuneParam;
+  IOPort *shapeParam;
 
   IOPort *audioOut1;
   IOPort *audioOut2;
+
+  IOPort *testLed;
 
   ChordSeq()
   {
@@ -73,34 +76,37 @@ struct ChordSeq : phnq::Engine
     this->nextChordButton = addIOPort(IOPortType::Button, IOPortDirection::Input, "nextChordButton");
     this->resetGate = addIOPort(IOPortType::Gate, IOPortDirection::Input, "resetGate");
     this->resetButton = addIOPort(IOPortType::Button, IOPortDirection::Input, "resetButton");
-    this->addChordGate = addIOPort(IOPortType::Gate, IOPortDirection::Input, "addChordGate");
     this->addChordButton = addIOPort(IOPortType::Button, IOPortDirection::Input, "addChordButton");
-    this->removeChordGate = addIOPort(IOPortType::Gate, IOPortDirection::Input, "removeChordGate");
     this->removeChordButton = addIOPort(IOPortType::Button, IOPortDirection::Input, "removeChordButton");
 
     this->addNoteGate = addIOPort(IOPortType::Gate, IOPortDirection::Input, "addNoteGate")->setDelay(10);
     this->addNoteButton = addIOPort(IOPortType::Button, IOPortDirection::Input, "addNoteButton");
     this->addNoteCV = addIOPort(IOPortType::CV, IOPortDirection::Input, "addNoteCV");
-    this->removeNoteGate = addIOPort(IOPortType::Gate, IOPortDirection::Input, "removeNoteGate");
-    this->removeNoteButton = addIOPort(IOPortType::Button, IOPortDirection::Input, "removeNoteButton");
+    this->addNotePitch = addIOPort(IOPortType::Param, IOPortDirection::Input, "addNotePitch");
 
     this->detuneParam = addIOPort(IOPortType::Param, IOPortDirection::Input, "detune");
+    this->shapeParam = addIOPort(IOPortType::Param, IOPortDirection::Input, "shape");
 
     this->audioOut1 = addIOPort(IOPortType::Audio, IOPortDirection::Output, "audioOut1");
     this->audioOut2 = addIOPort(IOPortType::Audio, IOPortDirection::Output, "audioOut2");
 
-    addChord();
+    this->testLed = addIOPort(IOPortType::Led, IOPortDirection::Output, "testLed");
+
+    logIOCapacity();
+
+    appendChord();
     addNoteToCurrentChord(0.3f);
     addNoteToCurrentChord(0.3f + (0.7f / 12.f));
 
-    addChord();
+    appendChord();
     addNoteToCurrentChord(0.3f + (0.3f / 12.f));
     addNoteToCurrentChord(0.3f + (1.f / 12.f));
   }
 
   void nextChord()
   {
-    chordIndex = ++chordIndex % chords.size();
+    chordIndex++;
+    chordIndex = chordIndex % chords.size();
   }
 
   void reset()
@@ -108,7 +114,12 @@ struct ChordSeq : phnq::Engine
     chordIndex = 0;
   }
 
-  void addChord()
+  void insertChord()
+  {
+    chords.insert(chords.begin() + chordIndex, vector<float>());
+  }
+
+  void appendChord()
   {
     chordIndex++;
     if (chordIndex > chords.size())
@@ -127,21 +138,17 @@ struct ChordSeq : phnq::Engine
   {
     while (chordIndex >= chords.size())
     {
-      addChord();
+      appendChord();
     }
     chords[chordIndex].push_back(pitch);
 
     adjustOscillatorPool();
   }
 
-  void removeLastNoteFromCurrentChord()
-  {
-    chords[chordIndex].pop_back();
-    adjustOscillatorPool();
-  }
-
   void adjustOscillatorPool()
   {
+    float shape = this->shapeParam->getValue();
+
     size_t oscillatorsNeeded = 0;
     for (vector<float> chord : chords)
     {
@@ -149,14 +156,14 @@ struct ChordSeq : phnq::Engine
     }
     while (oscillators.size() < oscillatorsNeeded)
     {
-      Oscillator *osc = new Oscillator();
+      Osc *osc = new Osc();
       osc->Init(getFrameInfo().sampleRate);
-      osc->SetWaveform(Oscillator::WAVE_SQUARE);
+      osc->SetWaveshape(shape);
       oscillators.push_back(osc);
     }
     while (oscillators.size() > oscillatorsNeeded)
     {
-      Oscillator *osc = oscillators.back();
+      Osc *osc = oscillators.back();
       oscillators.pop_back();
       delete osc;
     }
@@ -164,10 +171,11 @@ struct ChordSeq : phnq::Engine
 
   void sampleRateDidChange(float sampleRate) override
   {
-    for (Oscillator *osc : oscillators)
+    float shape = this->shapeParam->getValue();
+    for (Osc *osc : oscillators)
     {
       osc->Init(sampleRate);
-      osc->SetWaveform(Oscillator::WAVE_SQUARE);
+      osc->SetWaveshape(shape);
     }
   }
 
@@ -175,6 +183,8 @@ struct ChordSeq : phnq::Engine
   {
     if (high)
     {
+      testLed->setValue(1.f);
+
       if (gatePort == nextChordGate || gatePort == nextChordButton)
       {
         nextChord();
@@ -183,22 +193,49 @@ struct ChordSeq : phnq::Engine
       {
         reset();
       }
-      else if (gatePort == addChordGate || gatePort == addChordButton)
+      // If addChordButton and removeChordButton are pressed at the same time, do an insert.
+      else if ((gatePort == addChordButton && removeChordButton->getGateValue()) || (gatePort == removeChordButton && addChordButton->getGateValue()))
       {
-        addChord();
+        insertChord();
+        // This flag lets us know to ingore addChordButton and removeChordButton until both are releases.
+        isChordInsert = true;
       }
-      else if (gatePort == removeChordGate || gatePort == removeChordButton)
-      {
-        removeChord();
-      }
-      else if (gatePort == addNoteGate || gatePort == addNoteButton)
+      else if (gatePort == addNoteGate)
       {
         addNoteToCurrentChord(addNoteCV->getValue());
       }
-      else if (gatePort == removeNoteGate || gatePort == removeNoteButton)
+    }
+    else
+    {
+      testLed->setValue(0.f);
+
+      if (!isChordInsert)
       {
-        removeLastNoteFromCurrentChord();
+        if (gatePort == addChordButton)
+        {
+          appendChord();
+        }
+        else if (gatePort == removeChordButton)
+        {
+          removeChord();
+        }
       }
+    }
+
+    if (isChordInsert && !removeChordButton->getGateValue() && !addChordButton->getGateValue())
+    {
+      isChordInsert = false;
+    }
+  }
+
+  void cvValueDidChange(IOPort *cvPort, float value) override
+  {
+    PHNQ_LOG("======= cvValueDidChange");
+    if (cvPort == addNotePitch && addNoteButton->getGateValue())
+    {
+      vector<float> chord = chords[chordIndex];
+      chord.pop_back();
+      chord.push_back(value); // TODO quantize this value
     }
   }
 
@@ -206,8 +243,8 @@ struct ChordSeq : phnq::Engine
   {
     vector<float> chord = chords[chordIndex];
     float amp1 = 0.f, amp2 = 0.f;
-    size_t i = chord.size();
-    for (size_t i = 0; i < chord.size(); i++)
+    size_t chordSize = chord.size();
+    for (size_t i = 0; i < chordSize; i++)
     {
       float pitch = chord[i];
 
@@ -216,12 +253,16 @@ struct ChordSeq : phnq::Engine
       float freq1 = pitchToFrequency(pitch);
       float freq2 = pitchToFrequency(pitch + detune);
 
-      Oscillator *osc1 = oscillators[2 * i];
+      float shape = this->shapeParam->getValue();
+
+      Osc *osc1 = oscillators[2 * i];
       osc1->SetFreq(freq1);
+      osc1->SetWaveshape(shape);
       amp1 += osc1->Process();
 
-      Oscillator *osc2 = oscillators[2 * i + 1];
+      Osc *osc2 = oscillators[2 * i + 1];
       osc2->SetFreq(freq2);
+      osc2->SetWaveshape(shape);
       amp2 += osc2->Process();
     }
 
@@ -236,7 +277,7 @@ struct ChordSeq : phnq::Engine
 #include "../../core/rack/RackModuleUI.hpp"
 struct ChordSeqUI : public RackModuleUI<ChordSeq>
 {
-  ChordSeqUI(RackModule<ChordSeq> *module) : RackModuleUI<ChordSeq>(module, "res/ChordSeq.svg") {}
+  ChordSeqUI(RackModule<ChordSeq> *module) : RackModuleUI<ChordSeq>(module, "res/ChordSeq2.svg") {}
 };
 rack::plugin::Model *modelChordSeq = rack::createModel<RackModule<ChordSeq>, ChordSeqUI>("ChordSeq");
 #endif

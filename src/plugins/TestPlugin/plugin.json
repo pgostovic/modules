@@ -28,6 +28,14 @@
       "tags": [
         "VCO"
       ]
+    },
+    {
+      "slug": "PolyVox",
+      "name": "PolyVox",
+      "description": "Sequenced Chords Oscillator",
+      "tags": [
+        "VCO"
+      ]
     }
   ]
 }

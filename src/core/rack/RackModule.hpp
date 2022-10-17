@@ -28,7 +28,7 @@ namespace phnq
     {
       engine = new TEngine();
       IOConfig ioConfig = engine->getIOConfig();
-      config(ioConfig.numParams, ioConfig.numAudioIns + ioConfig.numCVIns + ioConfig.numGateIns, ioConfig.numAudioOuts + ioConfig.numCVOuts + ioConfig.numGateOuts);
+      config(ioConfig.numParams + ioConfig.numButtons, ioConfig.numAudioIns + ioConfig.numCVIns + ioConfig.numGateIns, ioConfig.numAudioOuts + ioConfig.numCVOuts + ioConfig.numGateOuts, ioConfig.numLeds);
     }
 
     ~RackModule()
@@ -75,6 +75,9 @@ namespace phnq
             // [0, 10] -> [0, 1] -- divide by 10.
             it->port->setValue(inputs[it->id].getVoltage() / 10.f);
             break;
+          case IOPortType::Led:
+            // N/A
+            break;
           }
         }
       }
@@ -105,6 +108,10 @@ namespace phnq
             // [0, 1] -> [0, 10] -- multiply by 10.
             outputs[it->id].setVoltage(it->port->getValue() * 10.f);
             break;
+          case IOPortType::Led:
+            lights[it->id].setBrightness(it->port->getValue());
+            break;
+
           case IOPortType::Param:
           case IOPortType::Button:
             // N/A

@@ -5,6 +5,7 @@
 #include <queue>
 #include <math.h>
 #include <assert.h>
+#include <daisysp.h>
 
 #ifdef PHNQ_RACK
 #include <rack.hpp>
@@ -44,10 +45,20 @@ using namespace std;
 namespace phnq
 {
   const float FREQ_C1 = 32.7032f;
+  const float CV_CHANGE_THRESHOLD = 0.00001f;
 
-  inline float pitchToFrequency(float pitch)
+  static float pitchToFrequency(float pitch)
   {
     return FREQ_C1 * std::pow(2.f, pitch * 10.f);
+  }
+
+  static void assertCondition(std::string text, bool condition)
+  {
+    if (!condition)
+    {
+      PHNQ_LOG("***** Failed Assertion: %s", text.c_str());
+    }
+    assert(condition);
   }
 
   struct FrameInfo
@@ -63,8 +74,10 @@ namespace phnq
     size_t numParams;    // max 10 for params + CV ins
     size_t numCVIns;     // max 10 for params + CV ins
     size_t numCVOuts;    // max 2
-    size_t numGateIns;   // max 18 for ins + outs
-    size_t numGateOuts;  // max 18 for ins + outs
+    size_t numGateIns;   // max 18 for ins + outs + buttons + leds
+    size_t numGateOuts;  // max 18 for ins + outs + buttons + leds
+    size_t numButtons;   // max 18 for ins + outs + buttons + leds
+    size_t numLeds;      // max 18 for ins + outs + buttons + leds
   };
 
   const float GATE_LOW = 0.f;
@@ -77,8 +90,9 @@ namespace phnq
     Audio,  // nominal range of [-1, 1], clamped at [-2, 2] when setting output value
     CV,     // range of [0, 1]
     Gate,   // low is 0.f, hight is 1.f
-    Param,  // same as CV
-    Button, // same as Gate
+    Param,  // range of [0, 1]
+    Button, // low is 0.f, hight is 1.f
+    Led,    // range of [0, 1]
   };
 
   enum IOPortDirection
@@ -89,26 +103,27 @@ namespace phnq
 
   struct IOPort;
 
-  struct GateListener
+  struct PortListener
   {
     virtual void gateValueDidChange(IOPort *gatePort, bool high) {}
+    virtual void cvValueDidChange(IOPort *cvPort, float value) {}
   };
 
   struct IOPort
   {
   private:
-    GateListener *gateListener;
+    PortListener *portListener;
     IOPortType type;
     IOPortDirection dir;
-    float value = 0.f;
+    float value;
     std::string panelId;
     uint16_t delay;
     queue<float> delayBuffer;
 
   public:
-    IOPort(GateListener *gateListener, IOPortType type, IOPortDirection dir, std::string panelId)
+    IOPort(PortListener *portListener, IOPortType type, IOPortDirection dir, std::string panelId)
     {
-      this->gateListener = gateListener;
+      this->portListener = portListener;
       this->type = type;
       this->dir = dir;
       this->value = 0.f;
@@ -126,6 +141,17 @@ namespace phnq
       return dir;
     }
 
+    /**
+     * @brief Get the Value of the port.
+     * Audio: nominal range of [-1, 1], clamped at [-2, 2] when setting output value
+     * CV: range of [0, 1]
+     * Gate: low is 0.f, hight is 1.f
+     * Param: range of [0, 1]
+     * Button: low is 0.f, hight is 1.f
+     * Led: range of [0, 1]
+     *
+     * @return the port value
+     */
     float getValue()
     {
       return value;
@@ -134,6 +160,11 @@ namespace phnq
     float getFrequencyValue()
     {
       return pitchToFrequency(getValue());
+    }
+
+    bool getGateValue()
+    {
+      return value > GATE_LOW_THRESH;
     }
 
     void setValue(float currentValue)
@@ -155,23 +186,35 @@ namespace phnq
       switch (type)
       {
       case IOPortType::Audio:
-        this->value = dir == IOPortDirection::Input ? value : clamp(value, -2.f, 2.f);
+        this->value = dir == IOPortDirection::Input ? value : daisysp::fclamp(value, -2.f, 2.f);
         break;
       case IOPortType::Param:
       case IOPortType::CV:
-        this->value = dir == IOPortDirection::Input ? value : clamp(value, 0.f, 1.f);
+      case IOPortType::Led:
+        if (dir == IOPortDirection::Input)
+        {
+          if (abs(this->value - value) > CV_CHANGE_THRESHOLD)
+          {
+            this->value = value;
+            portListener->cvValueDidChange(this, this->value);
+          }
+        }
+        else
+        {
+          this->value = daisysp::fclamp(value, 0.f, 1.f);
+        }
         break;
       case IOPortType::Button:
       case IOPortType::Gate:
         if (this->value == GATE_HIGH && value < GATE_LOW_THRESH)
         {
           this->value = GATE_LOW;
-          gateListener->gateValueDidChange(this, false);
+          portListener->gateValueDidChange(this, false);
         }
         else if (this->value == GATE_LOW && value > GATE_HIGH_THRESH)
         {
           this->value = GATE_HIGH;
-          gateListener->gateValueDidChange(this, true);
+          portListener->gateValueDidChange(this, true);
         }
         break;
       }
@@ -196,29 +239,14 @@ namespace phnq
     {
       return panelId;
     }
-
-    float clamp(float val, float min, float max)
-    {
-      return val < min ? min : val > max ? max
-                                         : val;
-    }
   };
 
-  struct Engine : GateListener
+  struct Engine : PortListener
   {
   private:
-    IOConfig ioConfig = {0, 0, 0, 0, 0, 0, 0};
+    IOConfig ioConfig = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     FrameInfo frameInfo;
     vector<IOPort *> ioPorts;
-
-    void assertCondition(std::string text, bool condition)
-    {
-      if (!condition)
-      {
-        PHNQ_LOG("***** Failed Assertion: %s", text.c_str());
-      }
-      assert(condition);
-    }
 
     void validateIOConfig()
     {
@@ -226,10 +254,20 @@ namespace phnq
       assertCondition("max 2 audio outs", ioConfig.numAudioOuts <= 2);
       assertCondition("max 10 params + CV ins", (ioConfig.numParams + ioConfig.numCVIns) <= 10);
       assertCondition("max 2 CV outs", ioConfig.numCVOuts <= 2);
-      assertCondition("max 18 gate ins + gate outs", (ioConfig.numGateIns + ioConfig.numCVOuts) <= 18);
+      assertCondition("max 18 gate ins + gate outs + buttons", (ioConfig.numGateIns + ioConfig.numCVOuts + ioConfig.numButtons + ioConfig.numLeds) <= 18);
     }
 
   protected:
+    void logIOCapacity()
+    {
+      PHNQ_LOG("IO Capacity:");
+      PHNQ_LOG("         audio ins: %lu of %i", ioConfig.numAudioIns, 2);
+      PHNQ_LOG("        audio outs: %lu of %i", ioConfig.numAudioOuts, 2);
+      PHNQ_LOG("     params/cv ins: %lu of %i", ioConfig.numParams + ioConfig.numCVIns, 10);
+      PHNQ_LOG("           cv outs: %lu of %i", ioConfig.numCVOuts, 2);
+      PHNQ_LOG("gates/buttons/leds: %lu of %i", ioConfig.numGateIns + ioConfig.numCVOuts + ioConfig.numButtons + ioConfig.numLeds, 18);
+    }
+
     IOPort *addIOPort(IOPortType type, IOPortDirection dir, std::string panelId)
     {
       IOPort *port = new IOPort(this, type, dir, panelId);
@@ -267,7 +305,7 @@ namespace phnq
           ioConfig.numGateOuts++;
         }
       }
-      else if (type == IOPortType::Param || type == IOPortType::Button)
+      else if (type == IOPortType::Param)
       {
         if (dir == IOPortDirection::Input)
         {
@@ -275,7 +313,29 @@ namespace phnq
         }
         else
         {
-          // Not a thing...
+          assertCondition("IOPortType::Param can only be used for input.", false);
+        }
+      }
+      else if (type == IOPortType::Button)
+      {
+        if (dir == IOPortDirection::Input)
+        {
+          ioConfig.numButtons++;
+        }
+        else
+        {
+          assertCondition("IOPortType::Button can only be used for input.", false);
+        }
+      }
+      else if (type == IOPortType::Led)
+      {
+        if (dir == IOPortDirection::Input)
+        {
+          assertCondition("IOPortType::Led can only be used for output.", false);
+        }
+        else
+        {
+          ioConfig.numLeds++;
         }
       }
 
@@ -291,6 +351,24 @@ namespace phnq
     FrameInfo getFrameInfo()
     {
       return frameInfo;
+    }
+
+    bool isDaisySeed()
+    {
+#ifdef PHNQ_SEED
+      return true;
+#else
+      return false;
+#endif
+    }
+
+    bool isVCVRack()
+    {
+#ifdef PHNQ_RACK
+      return true;
+#else
+      return false;
+#endif
     }
 
   public:
